@@ -1,7 +1,7 @@
 import requests
 import psycopg2
 import json
-from config import DATABASE_URL as DB_URL
+from backend.app.config import DATABASE_URL as DB_URL
 
 NOTION_TOKEN = "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"
 DATABASE_ID = "aa4025819d9d443584376acbd0408144"

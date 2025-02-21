@@ -1,5 +1,5 @@
 import psycopg
-from config import DATABASE_URL
+from backend.app.config import DATABASE_URL
 
 try:
     conn = psycopg.connect(DATABASE_URL)

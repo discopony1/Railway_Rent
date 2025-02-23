@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import "./styles.css";
-import Calendar from "./Calendar";
+
 import EquipmentList from "./EquipmentList";
 
 const Sidebar = ({ toggleShift }) => {

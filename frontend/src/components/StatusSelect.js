@@ -1,14 +1,18 @@
 import React from "react";
 import "./styles.css";
 
-function StatusSelect({ status, onChange }) {
+const StatusSelect = ({ status, onChange }) => {
+  const statusOptions = ['Бронь', 'Выдано', 'Возвращено'];
+
   return (
     <select value={status} onChange={(e) => onChange(e.target.value)}>
-      <option value="Бронь">Бронь</option>
-      <option value="Выдано">Выдано</option>
-      <option value="Возвращено">Возвращено</option>
+      {statusOptions.map((option) => (
+        <option key={option} value={option}>
+          {option}
+        </option>
+      ))}
     </select>
   );
-}
+};
 
 export default StatusSelect;

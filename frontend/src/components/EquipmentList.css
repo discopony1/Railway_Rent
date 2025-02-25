@@ -1,0 +1,124 @@
+.equipment-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+}
+
+.equipment-modal-content {
+    width: 500px;
+    max-width: 90vw;
+}
+
+.equipment-search {
+    width: 100%;
+    margin-bottom: 10px;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.equipment-list {
+    max-height: 300px;
+    overflow-y: auto;
+    list-style: none;
+    padding: 0;
+}
+
+.equipment-item {
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.equipment-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.quantity-control {
+    display: flex;
+    align-items: center;
+    margin-right: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.quantity-button {
+    padding: 4px 8px;
+    border: none;
+    background: #f5f5f5;
+    cursor: pointer;
+}
+
+.quantity-button:hover {
+    background: #e0e0e0;
+}
+
+.quantity-input {
+    width: 40px;
+    text-align: center;
+    border: none;
+    padding: 4px;
+}
+
+.equipment-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.availability {
+    text-align: right;
+}
+
+.availability.available {
+    color: green;
+}
+
+.availability.unavailable {
+    color: red;
+}
+
+.next-available {
+    font-size: 0.8em;
+    color: #666;
+}
+
+.modal-buttons {
+    margin-top: 16px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.button {
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.button-cancel {
+    background: #f5f5f5;
+    border: 1px solid #ccc;
+}
+
+.button-confirm {
+    background: #4CAF50;
+    color: white;
+    border: none;
+}
+
+.button-confirm:hover {
+    background: #45a049;
+}

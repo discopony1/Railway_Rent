@@ -4,12 +4,27 @@ from app.routes.booking_routes import bp as booking_bp
 from app.routes.inventory_routes import bp as inventory_bp
 
 app = Flask(__name__)
-CORS(app)
 
-# Загружаем конфиг
+# Отключаем автоматический редирект слешей
+app.url_map.strict_slashes = False
+
+CORS(app, resources={
+    r"/api/*": {
+        "origins": ["http://localhost:3000"],
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type"],
+        "supports_credentials": True,
+        "expose_headers": ["Content-Type"]  # Добавляем expose_headers
+    }
+})
+
+# Настройка обработки ошибок
+@app.errorhandler(400)
+def bad_request(error):
+    return {"error": "Bad Request", "message": str(error)}, 400
+
 app.config.from_object("app.config")
 
-# Подключаем маршруты
 app.register_blueprint(booking_bp, url_prefix="/api/bookings")
 app.register_blueprint(inventory_bp, url_prefix="/api/inventory")
 

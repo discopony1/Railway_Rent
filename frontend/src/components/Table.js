@@ -5,68 +5,77 @@ import './Table.css';
 
 const Table = () => {
     const [bookings, setBookings] = useState([]);
+    const [inventory, setInventory] = useState([]); // ✅ Добавил инвентарь
     const [error, setError] = useState(null);
 
     useEffect(() => {
         fetchBookings();
+        fetchInventory(); // ✅ Загружаем инвентарь
     }, []);
 
     const fetchBookings = async () => {
         try {
             const response = await fetch(`${API_BASE_URL}/bookings`);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
             const data = await response.json();
-            setBookings(Array.isArray(data) ? data : []);
+            setBookings(Array.isArray(data) ? 
+                data.map(booking => ({
+                    ...booking,
+                    equipment: Array.isArray(booking.equipment) ? booking.equipment : []
+                })) 
+                : []
+            );
         } catch (err) {
-            console.error("Error loading data:", err);
+            console.error("Error loading bookings:", err);
             setError(err.message);
         }
     };
 
-    const addRental = () => {
-        const newRental = {
-            id: Date.now(), // Временный ID
-            start_date: "",
-            end_date: "",
-            renter: "",
-            equipment: [],
-            issuer: "",
-            receiver: "",
-            status: "Бронь",
-            notes: ""
-        };
+    const fetchInventory = async () => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/inventory`);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
-        setBookings(prevBookings => [...prevBookings, newRental]);
+            const data = await response.json();
+            setInventory(Array.isArray(data) ? data : []); // ✅ Проверка на массив
+        } catch (err) {
+            console.error("Error loading inventory:", err);
+            setError(err.message);
+        }
     };
 
-    const saveRental = async (id, rentalData) => {
+    const addRental = async () => {
         try {
+            console.log("Создание аренды...");
             const response = await fetch(`${API_BASE_URL}/bookings`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(rentalData)
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({}) 
             });
-
+    
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+                const errorText = await response.text();
+                throw new Error(`Ошибка ${response.status}: ${errorText}`);
             }
-
+    
             const savedRental = await response.json();
-            setBookings(prevBookings => 
-                prevBookings.map(booking => 
-                    booking.id === id ? { ...savedRental, id: savedRental.id || savedRental.booking_id } : booking
-                )
-            );
-            return true;
+            console.log("Успешно создано:", savedRental);
+    
+            setBookings(prevBookings => [
+                ...prevBookings,
+                {
+                    id: savedRental.id,
+                    equipment: [],
+                    name: "",         // 👈 Добавляем имя арендатора
+                    issued_by: "",    // 👈 Кто выдал
+                    received_by: "",  // 👈 Кто принял
+                    notes: ""         // 👈 Примечания
+                }
+            ]);
         } catch (error) {
-            console.error("Ошибка сохранения:", error);
-            setError(error.message || "Не удалось сохранить бронирование");
-            return false;
+            console.error("Ошибка создания аренды:", error);
+            setError(error.message || "Не удалось создать бронирование");
         }
     };
 
@@ -74,16 +83,14 @@ const Table = () => {
         try {
             const rentalToUpdate = {
                 ...updatedRental,
-                equipment: Array.isArray(updatedRental.equipment) ? updatedRental.equipment : [],
+                equipment: updatedRental.equipment || [], // ✅ Передаём как массив, без JSON.stringify()
                 start_date: updatedRental.start_date || "",
                 end_date: updatedRental.end_date || ""
             };
 
             const response = await fetch(`${API_BASE_URL}/bookings/${id}`, {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(rentalToUpdate)
             });
 
@@ -92,9 +99,9 @@ const Table = () => {
                 throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
             }
 
-            setBookings(prevBookings => 
-                prevBookings.map(booking => 
-                    booking.id === id ? rentalToUpdate : booking
+            setBookings(prevBookings =>
+                prevBookings.map(booking =>
+                    booking.id === id ? { ...rentalToUpdate, id } : booking
                 )
             );
         } catch (error) {
@@ -112,9 +119,7 @@ const Table = () => {
         try {
             const response = await fetch(`${API_BASE_URL}/bookings/${id}`, {
                 method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                }
+                headers: { 'Content-Type': 'application/json' }
             });
 
             if (!response.ok) {
@@ -153,8 +158,8 @@ const Table = () => {
                         <RentalRow 
                             key={booking.id}
                             booking={booking}
+                            inventory={inventory} // ✅ Передаем inventory в RentalRow
                             onUpdate={updateRental}
-                            onSave={saveRental}
                             onDelete={() => handleDelete(booking.id)}
                         />
                     ))}

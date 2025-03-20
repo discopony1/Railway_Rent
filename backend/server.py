@@ -3,20 +3,21 @@ from flask_cors import CORS
 from app.routes.booking_routes import bp as booking_bp
 from app.routes.inventory_routes import bp as inventory_bp
 
+ALLOWED_ORIGINS = ["http://localhost:3000", "https://твоя-прод-страница.com"]
 app = Flask(__name__)
-
-# Отключаем автоматический редирект слешей
-app.url_map.strict_slashes = False
 
 CORS(app, resources={
     r"/api/*": {
-        "origins": ["http://localhost:3000"],
+        "origins": ALLOWED_ORIGINS,
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         "allow_headers": ["Content-Type"],
         "supports_credentials": True,
-        "expose_headers": ["Content-Type"]  # Добавляем expose_headers
+        "expose_headers": ["Content-Type"]
     }
 })
+CORS(app) 
+# Отключаем автоматический редирект слешей
+app.url_map.strict_slashes = False
 
 # Настройка обработки ошибок
 @app.errorhandler(400)
@@ -30,7 +31,6 @@ app.register_blueprint(inventory_bp, url_prefix="/api/inventory")
 
 if __name__ == "__main__":
     try:
-        print("🚀 Сервер запущен на порту 5000")
         app.run(debug=True, host="0.0.0.0", port=5000)
     except Exception as e:
         print(f"❌ Ошибка при запуске сервера: {e}")

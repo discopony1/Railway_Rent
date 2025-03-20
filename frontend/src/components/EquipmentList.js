@@ -1,7 +1,14 @@
 import React, { useState, useEffect, useRef } from "react";
-import ReactDOM from 'react-dom';
+import ReactDOM from "react-dom";
 import API_BASE_URL from "../config";
-import './EquipmentList.css';
+import "./EquipmentList.css";
+
+const modalRoot = document.getElementById("modal-root") || (() => {
+    const el = document.createElement("div");
+    el.id = "modal-root";
+    document.body.appendChild(el);
+    return el;
+})();
 
 const EquipmentList = ({ onSelect, onClose, selectedEquipment }) => {
     const listRef = useRef(null);
@@ -9,33 +16,24 @@ const EquipmentList = ({ onSelect, onClose, selectedEquipment }) => {
     const [loading, setLoading] = useState(true);
     const [selectedItems, setSelectedItems] = useState(Array.isArray(selectedEquipment) ? selectedEquipment : []);
     const [searchTerm, setSearchTerm] = useState("");
-    const modalRoot = useRef(document.createElement('div'));
 
     useEffect(() => {
-        modalRoot.current.id = 'modal-root';
-        document.body.appendChild(modalRoot.current);
-
-        return () => {
-            document.body.removeChild(modalRoot.current);
-        };
-    }, []);
-    
-    useEffect(() => {
-        fetch(`${API_BASE_URL}/inventory`)
-            .then((res) => {
-                if (!res.ok) {
-                    throw new Error(`HTTP error! status: ${res.status}`);
+        const fetchEquipment = async () => {
+            try {
+                const response = await fetch(`${API_BASE_URL}/inventory`);
+                if (!response.ok) {
+                    throw new Error(`Ошибка загрузки: ${response.status}`);
                 }
-                return res.json();
-            })
-            .then((data) => {
-                setEquipment(Array.isArray(data) ? data : []);
-                setLoading(false);
-            })
-            .catch((error) => {
+                const data = await response.json();
+                setEquipment(data);
+            } catch (error) {
                 console.error("Ошибка загрузки оборудования:", error);
+            } finally {
                 setLoading(false);
-            });
+            }
+        };
+
+        fetchEquipment();
 
         const handleClickOutside = (event) => {
             if (listRef.current && !listRef.current.contains(event.target)) {
@@ -52,22 +50,24 @@ const EquipmentList = ({ onSelect, onClose, selectedEquipment }) => {
     const toggleSelection = (item) => {
         setSelectedItems((prevSelected) => {
             if (!Array.isArray(prevSelected)) prevSelected = [];
+
             const existingItem = prevSelected.find((selected) => selected.id === item.id);
             if (existingItem) {
                 return prevSelected.filter((selected) => selected.id !== item.id);
             } else {
-                const quantity = Math.min(1, item.available);
-                return [...prevSelected, { ...item, quantity }];
+                return [...prevSelected, { ...item, quantity: 1 }];
             }
         });
     };
 
-    const updateQuantity = (itemId, newQuantity, maxAvailable) => {
-        if (!Array.isArray(selectedItems)) return;
-        const quantity = Math.min(Math.max(1, newQuantity), maxAvailable);
-        setSelectedItems(selectedItems.map((item) =>
-            item.id === itemId ? { ...item, quantity } : item
-        ));
+    const updateQuantity = (itemId, newQuantity) => {
+        setSelectedItems((prevSelected) => {
+            return prevSelected.map((item) =>
+                item.id === itemId
+                    ? { ...item, quantity: Math.min(Math.max(1, newQuantity || 1), item.quantity) }
+                    : item
+            );
+        });
     };
 
     const handleConfirm = () => {
@@ -79,7 +79,7 @@ const EquipmentList = ({ onSelect, onClose, selectedEquipment }) => {
         item.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const modalContent = (
+    return ReactDOM.createPortal(
         <div className="equipment-modal" ref={listRef}>
             <div className="equipment-modal-content">
                 <h3>Выберите оборудование</h3>
@@ -95,40 +95,41 @@ const EquipmentList = ({ onSelect, onClose, selectedEquipment }) => {
                 ) : (
                     <ul className="equipment-list">
                         {filteredEquipment.map((item) => {
-                            const selectedItem = Array.isArray(selectedItems) ? 
-                                selectedItems.find(selected => selected.id === item.id) : null;
-                            const isAvailable = item.available > 0;
+                            const selectedItem = selectedItems.find((selected) => selected.id === item.id);
+                            const isAvailable = item.quantity > 0;
 
                             return (
                                 <li key={item.id} className="equipment-item">
                                     <div className="equipment-controls">
                                         {selectedItem && (
                                             <div className="quantity-control">
-                                                <button 
+                                                <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        updateQuantity(item.id, selectedItem.quantity - 1, item.available);
+                                                        updateQuantity(item.id, selectedItem.quantity - 1);
                                                     }}
                                                     className="quantity-button"
+                                                    disabled={selectedItem.quantity <= 1}
                                                 >
                                                     -
                                                 </button>
                                                 <input
                                                     type="number"
                                                     value={selectedItem.quantity}
-                                                    onChange={(e) => updateQuantity(
-                                                        item.id,
-                                                        parseInt(e.target.value) || 1,
-                                                        item.available
-                                                    )}
+                                                    onChange={(e) =>
+                                                        updateQuantity(item.id, parseInt(e.target.value) || 1)
+                                                    }
                                                     className="quantity-input"
+                                                    min="1"
+                                                    max={item.quantity}
                                                 />
-                                                <button 
+                                                <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        updateQuantity(item.id, selectedItem.quantity + 1, item.available);
+                                                        updateQuantity(item.id, selectedItem.quantity + 1);
                                                     }}
                                                     className="quantity-button"
+                                                    disabled={selectedItem.quantity >= item.quantity}
                                                 >
                                                     +
                                                 </button>
@@ -139,18 +140,12 @@ const EquipmentList = ({ onSelect, onClose, selectedEquipment }) => {
                                                 type="checkbox"
                                                 checked={!!selectedItem}
                                                 onChange={() => toggleSelection(item)}
-                                                disabled={!isAvailable && !selectedItem}
                                             />
                                             <span>{item.name}</span>
                                         </label>
                                     </div>
-                                    <div className={`availability ${isAvailable ? 'available' : 'unavailable'}`}>
-                                        {isAvailable ? `Доступно: ${item.available}` : "Нет в наличии"}
-                                        {item.next_available && 
-                                            <div className="next-available">
-                                                Освободится: {item.next_available}
-                                            </div>
-                                        }
+                                    <div className={`availability ${isAvailable ? "available" : "unavailable"}`}>
+                                        {isAvailable ? `Доступно: ${item.quantity}` : "Нет в наличии"}
                                     </div>
                                 </li>
                             );
@@ -166,10 +161,9 @@ const EquipmentList = ({ onSelect, onClose, selectedEquipment }) => {
                     </button>
                 </div>
             </div>
-        </div>
+        </div>,
+        modalRoot
     );
-
-    return ReactDOM.createPortal(modalContent, modalRoot.current);
 };
 
 export default EquipmentList;

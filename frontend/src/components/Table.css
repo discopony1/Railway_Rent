@@ -1,5 +1,13 @@
+.table-container {
+    width: 100%;
+    padding: 20px;
+    box-sizing: border-box;
+    overflow-x: auto; /* Добавляем горизонтальную прокрутку для таблицы если нужно */
+}
+
 .rental-table {
     width: 100%;
+    min-width: 1200px; /* Минимальная ширина таблицы */
     border-collapse: collapse;
     margin-top: 20px;
 }
@@ -27,32 +35,67 @@
 
 .add-button {
     padding: 8px 16px;
-    background-color: #28a745;
+    background: #28a745;
     color: white;
     border: none;
     border-radius: 4px;
     cursor: pointer;
     font-size: 14px;
+    transition: background-color 0.2s ease;
 }
 
 .add-button:hover {
-    background-color: #218838;
+    background: #218838;
 }
 
-.rental-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 20px;
+.table-header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    min-width: 1200px; /* Соответствует минимальной ширине таблицы */
 }
 
-.table-header {
-    text-align: center;
-    padding: 10px;
-    background-color: #f5f5f5;
-    font-weight: bold;
+.filters {
+    display: flex;
+    gap: 10px;
 }
 
-.table-title {
-    margin: 0;
-    font-size: 24px;
+.filter-button {
+    padding: 8px 16px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.filter-button:hover {
+    background: #f5f5f5;
+}
+
+.filter-button.active {
+    background: #e0e0e0;
+    border-color: #bbb;
+}
+
+/* Стили для ячеек таблицы */
+.rental-table th:nth-child(1) { width: 200px; } /* Дата аренды */
+.rental-table th:nth-child(2) { width: 120px; } /* Имя */
+.rental-table th:nth-child(3) { width: 120px; } /* Кто выдал */
+.rental-table th:nth-child(4) { width: 120px; } /* Кто принял */
+.rental-table th:nth-child(5) { width: 200px; } /* Оборудование */
+.rental-table th:nth-child(6) { width: 150px; } /* Примечания */
+.rental-table th:nth-child(7) { width: 100px; } /* Статус */
+.rental-table th:nth-child(8) { width: 150px; } /* Конфликты */
+.rental-table th:nth-child(9) { width: 40px; }  /* Действия */
+
+/* Адаптивный контейнер */
+@media screen and (max-width: 1400px) {
+    .table-container {
+        margin-left: 0;
+        transition: margin-left 0.3s ease;
+        overflow-x: hidden; /* Скрываем горизонтальную прокрутку */
+    }
 }

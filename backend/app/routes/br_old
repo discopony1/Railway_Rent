@@ -1,0 +1,247 @@
+from flask import Blueprint, request, jsonify
+from app.database import get_db_connection
+import json
+from datetime import datetime
+
+bp = Blueprint("bookings", __name__)
+
+def init_db():
+    """Инициализация таблицы bookings"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS bookings (
+                id SERIAL PRIMARY KEY,
+                start_date TIMESTAMP NOT NULL,
+                end_date TIMESTAMP NOT NULL,
+                renter TEXT,
+                equipment TEXT,
+                issuer TEXT,
+                receiver TEXT,
+                status TEXT DEFAULT 'Бронь',
+                notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
+        conn.commit()
+        print("✅ Таблица bookings создана успешно")
+    except Exception as e:
+        print(f"❌ Ошибка при создании таблицы bookings: {e}")
+    finally:
+        cursor.close()
+        conn.close()
+
+init_db()
+
+def update_inventory(equipment, increment=True):
+    """Обновляет количество арендованного оборудования в инвентаре."""
+    conn = get_db_connection()
+    try:
+        conn.autocommit = False
+        cursor = conn.cursor()
+        
+        for item in equipment:
+            name = item.get('name')
+            quantity = item.get('quantity', 1)
+            
+            if increment:
+                # Если возвращаем оборудование (уменьшаем rented)
+                cursor.execute("""
+                    UPDATE inventory
+                    SET rented = rented - %s
+                    WHERE name = %s
+                """, (quantity, name))
+            else:
+                # Если забираем оборудование (увеличиваем rented)
+                cursor.execute("""
+                    UPDATE inventory
+                    SET rented = rented + %s
+                    WHERE name = %s
+                """, (quantity, name))
+        
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        cursor.close()
+        conn.close()
+
+@bp.route("/", methods=["GET"])
+def get_all_bookings():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute("SELECT * FROM bookings ORDER BY start_date DESC")
+        bookings = cursor.fetchall()
+        
+        bookings_list = []
+        for booking in bookings:
+            booking_dict = {
+                "id": booking[0],
+                "start_date": booking[1].isoformat() if booking[1] else None,
+                "end_date": booking[2].isoformat() if booking[2] else None,
+                "renter": booking[3],
+                "equipment": json.loads(booking[4]) if booking[4] else [],
+                "issuer": booking[5],
+                "receiver": booking[6],
+                "status": booking[7],
+                "notes": booking[8]
+            }
+            bookings_list.append(booking_dict)
+        
+        return jsonify(bookings_list)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+@bp.route("/", methods=["POST"])
+def create_booking():
+    conn = get_db_connection()
+    try:
+        conn.autocommit = False
+        cursor = conn.cursor()
+        
+        data = request.get_json()
+        
+        if not data or 'start_date' not in data or 'end_date' not in data:
+            return jsonify({"error": "Необходимы start_date и end_date"}), 400
+
+        equipment_json = json.dumps(data.get('equipment', []))
+        status = data.get('status', 'Бронь')
+        
+        # Если статус "Бронь" или "Выдано", увеличиваем rented
+        if status in ["Бронь", "Выдано"]:
+            update_inventory(data.get('equipment', []), increment=False)
+        
+        query = """
+            INSERT INTO bookings 
+            (start_date, end_date, renter, equipment, issuer, receiver, status, notes)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
+        """
+        
+        values = (
+            data.get('start_date'),
+            data.get('end_date'),
+            data.get('renter', ''),
+            equipment_json,
+            data.get('issuer', ''),
+            data.get('receiver', ''),
+            status,
+            data.get('notes', '')
+        )
+        
+        cursor.execute(query, values)
+        new_id = cursor.fetchone()[0]
+        conn.commit()
+        
+        return jsonify({"id": new_id, "message": "Бронирование создано успешно"}), 201
+        
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"error": f"Ошибка сервера: {str(e)}"}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+@bp.route("/<int:id>", methods=["PUT"])
+def update_booking(id):
+    conn = get_db_connection()
+    try:
+        conn.autocommit = False
+        cursor = conn.cursor()
+        
+        data = request.get_json()
+        new_status = data.get('status', 'Бронь')
+        
+        # Получаем текущее состояние бронирования
+        cursor.execute("SELECT equipment, status FROM bookings WHERE id = %s", (id,))
+        current_booking = cursor.fetchone()
+        if not current_booking:
+            return jsonify({"error": "Бронирование не найдено"}), 404
+            
+        current_equipment = json.loads(current_booking[0]) if current_booking[0] else []
+        current_status = current_booking[1]
+
+        # Обновляем rented при изменении статуса
+        if current_status != new_status:
+            if new_status == "Возвращено":
+                # Уменьшаем rented при возврате
+                update_inventory(current_equipment, increment=True)
+            elif current_status == "Возвращено" and new_status in ["Бронь", "Выдано"]:
+                # Увеличиваем rented при возврате к активному статусу
+                update_inventory(data.get('equipment', []), increment=False)
+        
+        cursor.execute("""
+            UPDATE bookings 
+            SET start_date = %s,
+                end_date = %s,
+                renter = %s,
+                equipment = %s,
+                issuer = %s,
+                receiver = %s,
+                status = %s,
+                notes = %s
+            WHERE id = %s
+        """, (
+            data.get('start_date'),
+            data.get('end_date'),
+            data.get('renter', ''),
+            json.dumps(data.get('equipment', [])),
+            data.get('issuer', ''),
+            data.get('receiver', ''),
+            new_status,
+            data.get('notes', ''),
+            id
+        ))
+        
+        conn.commit()
+        return jsonify({"message": "Бронирование обновлено успешно"}), 200
+        
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+@bp.route("/<int:id>", methods=["DELETE"])
+def delete_booking(id):
+    conn = get_db_connection()
+    try:
+        conn.autocommit = False
+        cursor = conn.cursor()
+        
+        # Получаем текущее состояние бронирования
+        cursor.execute("SELECT equipment, status FROM bookings WHERE id = %s", (id,))
+        current_booking = cursor.fetchone()
+        if not current_booking:
+            return jsonify({"error": "Бронирование не найдено"}), 404
+            
+        current_equipment = json.loads(current_booking[0]) if current_booking[0] else []
+        current_status = current_booking[1]
+
+        # Если статус не "Возвращено", возвращаем оборудование в инвентарь
+        if current_status != "Возвращено":
+            update_inventory(current_equipment, increment=True)
+        
+        cursor.execute("DELETE FROM bookings WHERE id = %s", (id,))
+        
+        conn.commit()
+        return jsonify({"message": "Бронирование удалено успешно"}), 200
+        
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()

@@ -3,18 +3,45 @@ import EquipmentList from "./EquipmentList";
 import StatusSelect from "./StatusSelect";
 import './RentalRow.css';
 
-const RentalRow = ({ booking, onUpdate, onSave, onDelete }) => {
-    const [rental, setRental] = useState(booking);
+const RentalRow = ({ booking, inventory, bookings, onUpdate, onDelete }) => {
+    const [rental, setRental] = useState({
+        ...booking,
+        equipment: Array.isArray(booking.equipment) ? booking.equipment : []
+    });
+
     const [showEquipmentList, setShowEquipmentList] = useState(false);
     const [conflicts, setConflicts] = useState([]);
+    const [isEditing, setIsEditing] = useState(false);
 
     useEffect(() => {
-        setRental(booking);
-    }, [booking]);
+        let parsedEquipment = [];
+        try {
+            if (typeof booking.equipment === "string") {
+                parsedEquipment = JSON.parse(booking.equipment);
+                if (typeof parsedEquipment === "string") {
+                    parsedEquipment = JSON.parse(parsedEquipment);
+                }
+            } else if (Array.isArray(booking.equipment)) {
+                parsedEquipment = booking.equipment;
+            }
+        } catch (error) {
+            console.error("Ошибка обработки equipment:", error, booking.equipment);
+        }
+
+        setRental(prevRental => {
+            if (JSON.stringify(prevRental.equipment) !== JSON.stringify(parsedEquipment)) {
+                return { ...prevRental, equipment: parsedEquipment };
+            }
+            return prevRental;
+        });
+
+    }, [booking.equipment]);
 
     useEffect(() => {
-        checkConflicts();
-    }, [rental.start_date, rental.end_date, rental.status]);
+        if (!isEditing) {
+            checkConflicts();
+        }
+    }, [rental.start_date, rental.end_date, rental.status, isEditing]);
 
     const checkConflicts = () => {
         const newConflicts = [];
@@ -52,39 +79,66 @@ const RentalRow = ({ booking, onUpdate, onSave, onDelete }) => {
                 newConflicts.push({ message: "⚠️ Дата/время начала позже конца!", severity: "error" });
             }
 
+            if (startDateTime > now && (rental.status === "Выдано" || rental.status === "Возвращено")) {
+                newConflicts.push({ 
+                    message: "⚠️ Аренда выдана или возвращена, но даты еще не наступили", 
+                    severity: "warning" 
+                });
+            }
+
             setConflicts(newConflicts);
         } catch (error) {
             setConflicts([{ message: "❌ Ошибка проверки дат", severity: "error" }]);
         }
     };
 
+    const calculateRented = (equipmentId, startDate, endDate) => {
+        if (!startDate || !endDate || !Array.isArray(bookings)) return 0;
+    
+        return bookings.reduce((totalRented, booking) => {
+            if (!booking || !Array.isArray(booking.equipment)) return totalRented;
+            if (!booking.start_date || !booking.end_date) return totalRented;
+    
+            const startBooking = new Date(booking.start_date);
+            const endBooking = new Date(booking.end_date);
+    
+            if (startBooking <= new Date(endDate) && endBooking >= new Date(startDate)) {
+                const rentedCount = booking.equipment.find(eq => eq.id === equipmentId)?.quantity || 0;
+                return totalRented + rentedCount;
+            }
+    
+            return totalRented;
+        }, 0);
+    };
+
     const handleChange = (e) => {
         const { name, value } = e.target;
-        const updatedRental = { ...rental, [name]: value };
-        setRental(updatedRental);
-        if (onUpdate) {
-            onUpdate(rental.id, updatedRental);
-        }
+        setIsEditing(true);
+        setRental(prev => ({
+            ...prev,
+            [name]: value
+        }));
     };
 
-    const handleSave = async () => {
-        if (onSave) {
-            const success = await onSave(rental.id, rental);
-            if (success) {
-                // Можно добавить уведомление об успешном сохранении
-                console.log("Бронирование успешно сохранено");
-            }
-        }
+    const handleBlur = () => {
+        setIsEditing(false);
+        const updatedRental = {
+            ...rental,
+            equipment: JSON.stringify(rental.equipment)  // Преобразуем в строку перед отправкой
+        };
+        onUpdate(rental.id, updatedRental);
     };
-
+    
     return (
         <tr>
+            {/* Дата аренды */}
             <td className="rental-date-cell">
                 <input
                     type="datetime-local"
                     name="start_date"
-                    value={rental.start_date ? rental.start_date.slice(0, 16) : ""}
+                    value={rental.start_date ? new Date(rental.start_date).toISOString().slice(0, 16) : ""}
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     step="900"
                     className="rental-date-input"
                 />
@@ -92,102 +146,120 @@ const RentalRow = ({ booking, onUpdate, onSave, onDelete }) => {
                 <input
                     type="datetime-local"
                     name="end_date"
-                    value={rental.end_date ? rental.end_date.slice(0, 16) : ""}
+                    value={rental.end_date ? new Date(rental.end_date).toISOString().slice(0, 16) : ""}
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     step="900"
                     className="rental-date-input"
                 />
             </td>
-
+    
+            {/* Поля с информацией */}
             <td>
-                <input 
-                    type="text" 
-                    name="renter" 
-                    value={rental.renter || ''} 
+                <input
+                    type="text"
+                    name="renter"
+                    value={rental.renter || ""}
                     onChange={handleChange}
+                    onBlur={handleBlur}
+                    placeholder="Имя арендатора"
+                    className="rental-input"
                 />
             </td>
-
             <td>
-                <input 
-                    type="text" 
-                    name="issuer" 
-                    value={rental.issuer || ''} 
+                <input
+                    type="text"
+                    name="issuer"
+                    value={rental.issuer || ""}
                     onChange={handleChange}
+                    onBlur={handleBlur}
+                    placeholder="Кто выдал"
+                    className="rental-input"
                 />
             </td>
-
             <td>
-                <input 
-                    type="text" 
-                    name="receiver" 
-                    value={rental.receiver || ''} 
+                <input
+                    type="text"
+                    name="receiver"
+                    value={rental.receiver || ""}
                     onChange={handleChange}
+                    onBlur={handleBlur}
+                    placeholder="Кто принял"
+                    className="rental-input"
                 />
             </td>
-
-            <td>
+                        {/* Список оборудования */}
+                        <td>
                 <button 
                     onClick={() => setShowEquipmentList(true)} 
                     className="equipment-button"
                 >
-                    {rental.equipment && rental.equipment.length > 0
-                        ? rental.equipment.map((eq) => (
-                            <span
-                                key={eq.id}
-                                className="equipment-tag"
-                            >
-                                {eq.name} × {eq.quantity || 1}
-                            </span>
-                          ))
+                    {rental.equipment.length > 0
+                        ? rental.equipment.map((eq, index) => {
+                            if (!Array.isArray(inventory)) {
+                                console.error("Ошибка: inventory не является массивом", inventory);
+                                return null;
+                            }
+    
+                            const total = inventory.find(item => item.id === eq.id)?.total || 0;
+                            const rented = calculateRented(eq.id, rental.start_date, rental.end_date);
+                            const available = total - rented;
+    
+                            return (
+                                <span key={index} className="equipment-tag">
+                                    {eq.name} × {eq.quantity || 1} (Доступно: {available} / {total})
+                                </span>
+                            );
+                        })
                         : "Выбрать оборудование"}
                 </button>
                 {showEquipmentList && (
                     <EquipmentList
                         selectedEquipment={rental.equipment}
                         onSelect={(selectedEquipment) => {
-                            const updatedRental = { ...rental, equipment: selectedEquipment };
-                            setRental(updatedRental);
-                            if (onUpdate) {
-                                onUpdate(rental.id, updatedRental);
-                            }
+                            setRental(prevRental => {
+                                const updatedRental = { ...prevRental, equipment: selectedEquipment };
+                                onUpdate(prevRental.id, updatedRental);
+                                return updatedRental;
+                            });
                             setShowEquipmentList(false);
                         }}
                         onClose={() => setShowEquipmentList(false)}
                     />
                 )}
             </td>
-
             <td>
-                <input 
-                    type="text" 
-                    name="notes" 
-                    value={rental.notes || ''} 
+                <input
+                    type="text"
+                    name="notes"
+                    value={rental.notes || ""}
                     onChange={handleChange}
+                    onBlur={handleBlur}
+                    placeholder="Примечания"
+                    className="rental-input"
                 />
             </td>
-
+    
+            {/* Статус аренды */}
             <td>
                 <StatusSelect
                     value={rental.status}
                     onChange={(status) => {
-                        const updatedRental = { ...rental, status };
-                        setRental(updatedRental);
-                        if (onUpdate) {
-                            onUpdate(rental.id, updatedRental);
-                        }
+                        setRental(prevRental => {
+                            const updatedRental = { ...prevRental, status };
+                            onUpdate(prevRental.id, updatedRental);
+                            return updatedRental;
+                        });
                     }}
                 />
             </td>
-
+    
+            {/* Конфликты */}
             <td className="conflicts-cell">
                 {conflicts.length > 0 ? (
                     <div className="conflicts-list">
                         {conflicts.map((conflict, index) => (
-                            <div 
-                                key={index} 
-                                className={`conflict-item conflict-${conflict.severity}`}
-                            >
+                            <div key={index} className={`conflict-item conflict-${conflict.severity}`}>
                                 {conflict.message}
                             </div>
                         ))}
@@ -196,28 +268,19 @@ const RentalRow = ({ booking, onUpdate, onSave, onDelete }) => {
                     <span className="no-conflicts">✓</span>
                 )}
             </td>
-
+    
+            {/* Удаление аренды */}
             <td>
-                <div className="action-buttons">
-                    <button 
-                        onClick={handleSave}
-                        className="confirm-button"
-                        title="Сохранить"
-                    >
-                        ✓
-                    </button>
-                    {" / "}
-                    <button 
-                        onClick={() => onDelete(rental.id)}
-                        className="delete-button"
-                        title="Удалить"
-                    >
-                        ✕
-                    </button>
-                </div>
+                <button 
+                    onClick={() => onDelete(rental.id)}
+                    className="delete-button"
+                    title="Удалить"
+                >
+                    ✕
+                </button>
             </td>
         </tr>
     );
-};
+}
 
 export default RentalRow;

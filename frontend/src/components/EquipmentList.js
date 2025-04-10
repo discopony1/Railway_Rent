@@ -10,17 +10,22 @@ const modalRoot = document.getElementById("modal-root") || (() => {
     return el;
 })();
 
-const EquipmentList = ({ onSelect, onClose, selectedEquipment }) => {
+const EquipmentList = ({ onSelect, onClose, selectedEquipment, startDate, endDate }) => {
     const listRef = useRef(null);
     const [equipment, setEquipment] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedItems, setSelectedItems] = useState(Array.isArray(selectedEquipment) ? selectedEquipment : []);
     const [searchTerm, setSearchTerm] = useState("");
+    const [expandedCategories, setExpandedCategories] = useState({});
 
     useEffect(() => {
         const fetchEquipment = async () => {
             try {
-                const response = await fetch(`${API_BASE_URL}/inventory`);
+                const params = new URLSearchParams();
+                if (startDate) params.append("start_date", startDate);
+                if (endDate) params.append("end_date", endDate);
+
+                const response = await fetch(`${API_BASE_URL}/inventory?${params.toString()}`);
                 if (!response.ok) {
                     throw new Error(`Ошибка загрузки: ${response.status}`);
                 }
@@ -45,7 +50,23 @@ const EquipmentList = ({ onSelect, onClose, selectedEquipment }) => {
         return () => {
             document.removeEventListener("mousedown", handleClickOutside);
         };
-    }, [onClose]);
+    }, [onClose, startDate, endDate]);
+
+    const updateQuantity = (itemId, newQuantity) => {
+        setSelectedItems((prevSelected) =>
+            prevSelected.map((item) => {
+                if (item.id === itemId) {
+                    const availableQuantity = item.total - (item.rented || 0);
+                    return { ...item, quantity: Math.max(1, Math.min(newQuantity || 1, availableQuantity)) };
+                }
+                return item;
+            })
+        );
+    };
+
+    const removeItem = (itemId) => {
+        setSelectedItems((prevSelected) => prevSelected.filter((item) => item.id !== itemId));
+    };
 
     const toggleSelection = (item) => {
         setSelectedItems((prevSelected) => {
@@ -60,29 +81,59 @@ const EquipmentList = ({ onSelect, onClose, selectedEquipment }) => {
         });
     };
 
-    const updateQuantity = (itemId, newQuantity) => {
-        setSelectedItems((prevSelected) => {
-            return prevSelected.map((item) =>
-                item.id === itemId
-                    ? { ...item, quantity: Math.min(Math.max(1, newQuantity || 1), item.quantity) }
-                    : item
-            );
-        });
-    };
-
     const handleConfirm = () => {
         onSelect(Array.isArray(selectedItems) ? selectedItems : []);
         onClose();
     };
 
-    const filteredEquipment = equipment.filter((item) =>
-        item.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const collator = new Intl.Collator("ru", { numeric: true, sensitivity: "base" });
+
+    const groupedEquipment = equipment.reduce((acc, item) => {
+        if (!acc[item.category]) acc[item.category] = [];
+        acc[item.category].push(item);
+        return acc;
+    }, {});
+
+    Object.keys(groupedEquipment).forEach((category) => {
+        groupedEquipment[category].sort((a, b) => collator.compare(a.name, b.name));
+    });
+
+    const toggleCategory = (category) => {
+        setExpandedCategories((prev) => ({
+            ...prev,
+            [category]: !prev[category],
+        }));
+    };
+
+    const filteredEquipment = equipment
+        .filter((item) => item.name.toLowerCase().includes(searchTerm.toLowerCase()))
+        .sort((a, b) => collator.compare(a.name, b.name));
+
+    const isSearching = searchTerm.trim().length > 0;
 
     return ReactDOM.createPortal(
         <div className="equipment-modal" ref={listRef}>
             <div className="equipment-modal-content">
                 <h3>Выберите оборудование</h3>
+
+                {/* Отображение выбранного оборудования в виде блоков */}
+                <div className="selected-equipment">
+                    {selectedItems.map((item) => (
+                        <div key={item.id} className="selected-item">
+                            <span className="remove-item" onClick={() => removeItem(item.id)}>×</span>
+                            <span>{item.name} ×</span>
+                            <input
+                                type="number"
+                                value={item.quantity}
+                                onChange={(e) => updateQuantity(item.id, parseInt(e.target.value) || 1)}
+                                min="1"
+                                max={item.total - (item.rented || 0)} // Защита от NaN
+                                className="selected-quantity"
+                            />
+                        </div>
+                    ))}
+                </div>
+
                 <input
                     type="text"
                     placeholder="Поиск..."
@@ -90,51 +141,18 @@ const EquipmentList = ({ onSelect, onClose, selectedEquipment }) => {
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="equipment-search"
                 />
+
                 {loading ? (
                     <p>Загрузка...</p>
                 ) : (
-                    <ul className="equipment-list">
-                        {filteredEquipment.map((item) => {
-                            const selectedItem = selectedItems.find((selected) => selected.id === item.id);
-                            const isAvailable = item.quantity > 0;
+                    <div className="equipment-list">
+                        {isSearching ? (
+                            filteredEquipment.map((item) => {
+                                const selectedItem = selectedItems.find((selected) => selected.id === item.id);
+                                const isAvailable = (item.total - (item.rented || 0)) > 0;
 
-                            return (
-                                <li key={item.id} className="equipment-item">
-                                    <div className="equipment-controls">
-                                        {selectedItem && (
-                                            <div className="quantity-control">
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        updateQuantity(item.id, selectedItem.quantity - 1);
-                                                    }}
-                                                    className="quantity-button"
-                                                    disabled={selectedItem.quantity <= 1}
-                                                >
-                                                    -
-                                                </button>
-                                                <input
-                                                    type="number"
-                                                    value={selectedItem.quantity}
-                                                    onChange={(e) =>
-                                                        updateQuantity(item.id, parseInt(e.target.value) || 1)
-                                                    }
-                                                    className="quantity-input"
-                                                    min="1"
-                                                    max={item.quantity}
-                                                />
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        updateQuantity(item.id, selectedItem.quantity + 1);
-                                                    }}
-                                                    className="quantity-button"
-                                                    disabled={selectedItem.quantity >= item.quantity}
-                                                >
-                                                    +
-                                                </button>
-                                            </div>
-                                        )}
+                                return (
+                                    <li key={item.id} className="equipment-item">
                                         <label className="equipment-label">
                                             <input
                                                 type="checkbox"
@@ -143,22 +161,51 @@ const EquipmentList = ({ onSelect, onClose, selectedEquipment }) => {
                                             />
                                             <span>{item.name}</span>
                                         </label>
-                                    </div>
-                                    <div className={`availability ${isAvailable ? "available" : "unavailable"}`}>
-                                        {isAvailable ? `Доступно: ${item.quantity}` : "Нет в наличии"}
-                                    </div>
-                                </li>
-                            );
-                        })}
-                    </ul>
+                                        <div className={`availability ${isAvailable ? "available" : "unavailable"}`}>
+                                            {isAvailable ? `Доступно: ${item.total - (item.rented || 0)}` : "Нет в наличии"}
+                                        </div>
+                                    </li>
+                                );
+                            })
+                        ) : (
+                            Object.entries(groupedEquipment).map(([category, items]) => (
+                                <div key={category} className="equipment-category">
+                                    <button className="category-toggle" onClick={() => toggleCategory(category)}>
+                                        {expandedCategories[category] ? "▼" : "▶"} {category}
+                                    </button>
+                                    {expandedCategories[category] && (
+                                        <ul>
+                                            {items.map((item) => {
+                                                const selectedItem = selectedItems.find((selected) => selected.id === item.id);
+                                                const isAvailable = (item.total - (item.rented || 0)) > 0;
+
+                                                return (
+                                                    <li key={item.id} className="equipment-item">
+                                                        <label className="equipment-label">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={!!selectedItem}
+                                                                onChange={() => toggleSelection(item)}
+                                                            />
+                                                            <span>{item.name}</span>
+                                                        </label>
+                                                        <div className={`availability ${isAvailable ? "available" : "unavailable"}`}>
+                                                            {isAvailable ? `Доступно: ${item.total - (item.rented || 0)}` : "Нет в наличии"}
+                                                        </div>
+                                                    </li>
+                                                );
+                                            })}
+                                        </ul>
+                                    )}
+                                </div>
+                            ))
+                        )}
+                    </div>
                 )}
+
                 <div className="modal-buttons">
-                    <button onClick={onClose} className="button button-cancel">
-                        Отмена
-                    </button>
-                    <button onClick={handleConfirm} className="button button-confirm">
-                        Готово
-                    </button>
+                    <button onClick={onClose} className="button button-cancel">Отмена</button>
+                    <button onClick={handleConfirm} className="button button-confirm">Готово</button>
                 </div>
             </div>
         </div>,

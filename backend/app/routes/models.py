@@ -86,30 +86,36 @@ class Booking:
 
     @staticmethod
     def update(booking_id, data):
-        """Обновляет аренду по ID."""
         conn = get_db_connection()
         cursor = conn.cursor()
         try:
-            # Обрабатываем JSON equipment
             equipment = json.dumps(data.get("equipment", []))
 
             cursor.execute("""
                 UPDATE bookings
-                SET start_date = %s, end_date = %s, renter = %s, issuer = %s, receiver = %s, status = %s, notes = %s, equipment = %s
+                SET start_date = %s, 
+                    end_date = %s, 
+                    renter = %s, 
+                    issuer = %s, 
+                    receiver = %s, 
+                    status = %s, 
+                    notes = %s, 
+                    equipment = %s
                 WHERE id = %s
             """, (
                 data.get("start_date"),
                 data.get("end_date"),
-                data.get("renter"),
-                data.get("issuer"),
-                data.get("receiver"),
-                data.get("status"),
-                data.get("notes"),
+                data.get("renter", ""),  # ФИО арендатора
+                data.get("issuer", ""),  # Кто выдал
+                data.get("receiver", ""),  # Кто принял
+                data.get("status", "Бронь"),  # Статус аренды
+                data.get("notes", ""),  # Примечания
                 equipment,
                 booking_id
             ))
+
             conn.commit()
-            return cursor.rowcount > 0  # Возвращает True, если запись обновлена
+            return cursor.rowcount > 0
         except Exception as e:
             conn.rollback()
             logger.error(f"❌ Ошибка обновления аренды {booking_id}: {e}")

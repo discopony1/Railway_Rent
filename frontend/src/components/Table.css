@@ -1,101 +1,198 @@
+/* Общие стили для страницы */
+body {
+    font-family: sans-serif;
+    background-color: #FFF9C4; /* Светлый желтый фон */
+    color: #333;
+    margin: 0;
+    padding: 0;
+}
+
+/* Контейнер для таблицы */
 .table-container {
     width: 100%;
     padding: 20px;
     box-sizing: border-box;
-    overflow-x: auto; /* Добавляем горизонтальную прокрутку для таблицы если нужно */
+    overflow-x: auto; /* Горизонтальная прокрутка */
 }
 
-.rental-table {
-    width: 100%;
-    min-width: 1200px; /* Минимальная ширина таблицы */
-    border-collapse: collapse;
-    margin-top: 20px;
-}
-
-.rental-table th,
-.rental-table td {
-    padding: 12px;
-    border: 1px solid #ddd;
-    text-align: left;
-}
-
-.rental-table th {
-    background-color: #f5f5f5;
-    font-weight: bold;
-}
-
-.error {
-    color: #dc3545;
-    padding: 10px;
-    margin: 10px 0;
-    border: 1px solid #dc3545;
-    border-radius: 4px;
-    background-color: #fff8f8;
-}
-
-.add-button {
-    padding: 8px 16px;
-    background: #28a745;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
-    transition: background-color 0.2s ease;
-}
-
-.add-button:hover {
-    background: #218838;
-}
-
+/* Заголовок таблицы */
 .table-header-container {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
-    min-width: 1200px; /* Соответствует минимальной ширине таблицы */
+    background-color: #ffffff; 
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
 
-.filters {
-    display: flex;
-    gap: 10px;
+.table-header-container .logo {
+    width: 50px;  /* Размер лого */
+    height: auto;
 }
 
-.filter-button {
-    padding: 8px 16px;
+h2 {
+    font-size: 24px;
+    margin: 0;
+}
+
+/* Таблица */
+.rental-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Заголовки таблицы */
+.rental-table th {
+    background: #feed01; /* Желтый для заголовков */
+    color: black;
+    font-weight: bold;
+    padding: 14px;
+    text-align: center;
+    border-bottom: 2px solid #ddd;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+/* Ячейки таблицы */
+.rental-table td {
+    padding: 12px;
     border: 1px solid #ddd;
-    border-radius: 4px;
-    background: white;
+    text-align: left;
+    transition: background 0.3s ease;
+}
+
+/* Чередование цветов строк */
+.rental-table tr:nth-child(even) {
+    background: #fafafa;
+}
+
+.rental-table tr:hover {
+    background: #f0f0f0;
+}
+
+/* Ошибки */
+.error {
+    color: #dc3545;
+    padding: 12px;
+    margin: 12px 0;
+    border: 1px solid #dc3545;
+    border-radius: 6px;
+    background: #fff8f8;
+    font-weight: bold;
+}
+
+/* Кнопка "Добавить аренду" */
+.add-button {
+    padding: 12px 20px;
+    background: #feed01; 
+    color: black;
+    border: none;
+    border-radius: 6px;
     cursor: pointer;
-    transition: all 0.2s ease;
-    white-space: nowrap;
+    font-size: 16px;
+    font-weight: 600;
+    transition: background-color 0.3s ease;
+}
+
+.add-button:hover {
+    background: #D32F2F;
+}
+
+/* Статус аренды */
+.status {
+    font-weight: bold;
+    padding: 4px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    background-color: #f0f0f0;
+}
+
+.status.booking {
+    background-color: #ffc107; /* Желтый для 'Бронь' */
+    color: #fff;
+}
+
+.status.issued {
+    background-color: #28a745; /* Зеленый для 'Выдано' */
+    color: #fff;
+}
+
+.status.returned {
+    background-color: #6c757d; /* Серый для 'Возвращено' */
+    color: #fff;
+}
+
+/* Колонки таблицы */
+.rental-table th:nth-child(1) { width: 100px; } /* Дата аренды */
+.rental-table th:nth-child(2) { width: 50px; } /* Имя */
+.rental-table th:nth-child(3) { width: 50px; } /* Кто выдал */
+.rental-table th:nth-child(4) { width: 50px; } /* Кто принял */
+.rental-table th:nth-child(5) { width: 400px; } /* Оборудование */
+.rental-table th:nth-child(6) { width: 200px; } /* Примечания */
+.rental-table th:nth-child(7) { width: 100px; } /* Статус */
+.rental-table th:nth-child(8) { width: 100px; } /* Конфликты */
+.rental-table th:nth-child(9) { width: 80px; }  /* Действия */
+
+/* Кнопки фильтров */
+.filter-button {
+    padding: 10px 20px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    background: #FFEB3B; /* Желтый для кнопок фильтров */
+    cursor: pointer;
+    transition: all 0.3s ease;
 }
 
 .filter-button:hover {
-    background: #f5f5f5;
+    background: #F5F5F5;
 }
 
 .filter-button.active {
-    background: #e0e0e0;
-    border-color: #bbb;
+    background: #F44336; /* Розовый для активных фильтров */
+    color: white;
+    border-color: #F44336;
 }
 
-/* Стили для ячеек таблицы */
-.rental-table th:nth-child(1) { width: 200px; } /* Дата аренды */
-.rental-table th:nth-child(2) { width: 120px; } /* Имя */
-.rental-table th:nth-child(3) { width: 120px; } /* Кто выдал */
-.rental-table th:nth-child(4) { width: 120px; } /* Кто принял */
-.rental-table th:nth-child(5) { width: 200px; } /* Оборудование */
-.rental-table th:nth-child(6) { width: 150px; } /* Примечания */
-.rental-table th:nth-child(7) { width: 100px; } /* Статус */
-.rental-table th:nth-child(8) { width: 150px; } /* Конфликты */
-.rental-table th:nth-child(9) { width: 40px; }  /* Действия */
-
-/* Адаптивный контейнер */
-@media screen and (max-width: 1400px) {
+/* Адаптивность */
+@media screen and (max-width: 1200px) {
     .table-container {
-        margin-left: 0;
-        transition: margin-left 0.3s ease;
-        overflow-x: hidden; /* Скрываем горизонтальную прокрутку */
+        padding: 10px;
+    }
+
+    .table-header-container {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .rental-table {
+        min-width: 1000px;
+    }
+
+    .filter-button {
+        font-size: 14px;
+        padding: 8px 16px;
+    }
+}
+
+/* Для мобильных устройств */
+@media screen and (max-width: 768px) {
+    .rental-table th, .rental-table td {
+        padding: 10px;
+    }
+
+    .rental-table .status {
+        font-size: 12px;
+        padding: 3px 6px;
+    }
+
+    .add-button {
+        padding: 10px 16px;
+        font-size: 14px;
     }
 }

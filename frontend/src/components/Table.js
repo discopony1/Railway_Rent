@@ -1,34 +1,13 @@
-import React, { useState, useEffect, useReducer } from "react";
+import React, { useState, useEffect } from "react";
 import RentalRow from "./RentalRow";
 import API_BASE_URL from "../config";
 import logo from '../logo.jpg'
 import './Table.css';
 
-// Компонент для отображения ошибок
-const ErrorNotification = ({ message, onClose }) => (
-    <div className="error-notification">
-        <span>{message}</span>
-        <button onClick={onClose}>Закрыть</button>
-    </div>
-);
-
-// Состояния для работы с бронированиями
-const bookingsReducer = (state, action) => {
-    switch (action.type) {
-        case 'SET_BOOKINGS':
-            return action.payload;
-        case 'ADD_BOOKING':
-            return [action.payload, ...state];
-        case 'DELETE_BOOKING':
-            return state.filter((booking) => booking.id !== action.payload);
-        default:
-            return state;
-    }
-};
-
 const Table = () => {
     const [bookings, setBookings] = useState([]);
     const [error, setError] = useState(null);
+    const [isEditingRow, setIsEditingRow] = useState(null); // Состояние для редактирования строки
 
     useEffect(() => {
         fetchBookings();
@@ -91,11 +70,12 @@ const Table = () => {
             ...updatedData,
             start_date: updatedData.start_date ? formatDateForAPI(updatedData.start_date) : undefined, 
             end_date: updatedData.end_date ? formatDateForAPI(updatedData.end_date) : undefined, 
-            equipment: updatedData.equipment.map(({ name, quantity }) => ({ name, quantity })) 
+            equipment: updatedData.equipment.map(({ name, quantity }) => ({ name, quantity })), 
+            where: updatedData.where // Добавляем новое поле "Где"
         };
-    
+
         console.log("📤 Отправляем в API:", formattedData); // Проверяем данные перед отправкой
-    
+
         try {
             const response = await fetch(`${API_BASE_URL}/bookings/${id}`, {
                 method: "PUT",
@@ -104,17 +84,16 @@ const Table = () => {
                 },
                 body: JSON.stringify(formattedData)
             });
-    
+
             if (!response.ok) {
                 throw new Error(`Ошибка ${response.status}`);
             }
-    
+
             console.log("✅ Успешно обновлено!");
         } catch (error) {
             console.error("Ошибка обновления:", error);
         }
     };
-    
 
     // Удаление аренды
     const handleDelete = async (id) => {
@@ -132,17 +111,25 @@ const Table = () => {
         }
     };
 
+    // Функция для включения редактирования
+    const handleClickEdit = (id) => {
+        if (isEditingRow === id) {
+            setIsEditingRow(null); // Если редактируемая строка та же, что уже редактируется, отменяем редактирование
+        } else {
+            setIsEditingRow(id); // Включаем редактирование для выбранной строки
+        }
+    };
+
     return (
         <div>
             <div className="table-header-container">
-                {/* Добавляем лого рядом с заголовком */}
+                <div className="table-header">
                 <button onClick={addRental} className="add-button">➕ Добавить аренду</button>
-                <h2>📋 Таблица аренды</h2>
-                <img src={logo} alt="Logo" className="logo" /> 
-               
-                
+                    <h2>📋 Таблица аренды</h2>
+                    <img src={logo} alt="Logo" className="logo" /> 
+                </div>
             </div>
-            
+
             {error && <p className="error-message">{error}</p>}
             <table className="rental-table">
                 <thead>
@@ -153,9 +140,10 @@ const Table = () => {
                         <th>Кто принял</th>
                         <th>Оборудование</th>
                         <th>Примечания</th>
+                        <th>Где</th> 
                         <th>Статус</th>
-                        <th>Конфликты</th>
-                        <th>Действия</th>
+                        <th></th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -165,6 +153,9 @@ const Table = () => {
                             booking={booking}
                             onUpdate={updateRental}
                             onDelete={() => handleDelete(booking.id)}
+                            isEditingRow={isEditingRow}
+                            setIsEditingRow={setIsEditingRow}
+                            onClickEdit={() => handleClickEdit(booking.id)}
                         />
                     ))}
                 </tbody>

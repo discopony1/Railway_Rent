@@ -1,0 +1,123 @@
+/* Стили для таблицы */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    overflow-y: auto; /* Добавляем прокрутку для таблицы */
+    display: block;
+    max-height: 795px; /* Максимальная высота таблицы */
+}
+
+/* Стили для заголовка таблицы */
+thead {
+    position: sticky;
+    top: 0;
+    background-color: #feed01;
+    z-index: 1;
+}
+
+/* Для иконок сортировки */
+th {
+    padding: 10px;
+    background-color: #feed01;
+    text-align: center;
+    font-weight: bold;
+    border: 0px solid #ffffff;
+}
+
+td {
+    padding: 10px;
+    border: 1px solid #ddd;
+    text-align: center;
+}
+
+/* Кнопки */
+button {
+    padding: 8px 16px;
+    margin-top: 10px;
+    background-color: #feed01;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #e9ecef;
+}
+
+
+/* Стили для шапки сайта */
+.header {
+  position: relative;
+  z-index: 100;
+  background-color: #ffffff;
+  color: white;
+  padding: 20px;
+  text-align: center;
+  transition: top 0.3s; /* Плавное скрытие */
+}
+
+/* Когда шапка скроллится, ее скрываем */
+.header.hidden {
+  position: fixed;
+  top: -100px; /* Скрываем шапку при скролле */
+  width: 100%;
+  left: 0;
+}
+
+/* Стили для уведомлений */
+.notification-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  max-width: 300px; /* Максимальная ширина контейнера */
+  display: flex;
+  flex-direction: column-reverse; /* Новые уведомления будут отображаться сверху */
+  gap: 10px; /* Расстояние между уведомлениями */
+  z-index: 9999; /* Убедимся, что уведомления будут поверх */
+}
+
+.notification {
+  background-color: #28a745;  /* Зеленый для успешных сообщений */
+  color: white;
+  padding: 10px;
+  border-radius: 5px;
+  font-size: 14px;
+  opacity: 0;
+  animation: fadeIn 0.5s forwards, fadeOut 3s 2.5s forwards; /* После 2 секунд fadeOut будет активирован */
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.notification.success {
+    background-color: #4CAF50; /* Зеленый для успешных сообщений */
+}
+
+.notification.error {
+    background-color: #f44336; /* Красный для ошибок */
+}
+
+/* Фиксация шапки при прокрутке */
+.fixed-header {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 999; /* Обеспечиваем, чтобы шапка была поверх всех элементов */
+    background-color: #333;
+    color: white;
+}

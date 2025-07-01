@@ -36,50 +36,7 @@ const checkConflicts = (start_date, end_date, status) => {
     return newConflicts;
 };
 
-// Вспомогательная функция для обработки доступности оборудования
-const checkAvailability = (rental, inventory, allRentals) => {
-    if (!rental.start_date || !rental.end_date) {
-        return {};
-    }
-
-    const startDate = new Date(rental.start_date);
-    const endDate = new Date(rental.end_date);
-
-    const updatedAvailability = {};
-
-    inventory.forEach(item => {
-        let totalAvailable = item.total;
-        let upcomingReturns = [];
-
-        allRentals?.forEach(rent => {
-            if (rent.status === "Возвращено") return;
-
-            (rent.equipment ?? []).forEach(eq => {
-                if (eq.name === item.name) {
-                    const rentStart = new Date(rent.start_date);
-                    const rentEnd = new Date(rent.end_date);
-
-                    if ((rentStart <= endDate && rentEnd >= startDate)) {
-                        totalAvailable -= eq.quantity;
-                    }
-
-                    if (rentEnd > startDate && rentEnd < endDate) {
-                        upcomingReturns.push({ quantity: eq.quantity, returnDate: rentEnd });
-                    }
-                }
-            });
-        });
-
-        updatedAvailability[item.name] = {
-            available: Math.max(0, totalAvailable),
-            upcomingReturns: upcomingReturns.sort((a, b) => a.returnDate - b.returnDate)
-        };
-    });
-
-    return updatedAvailability;
-};
-
-const RentalRow = ({ booking, onUpdate, onDelete, allRentals = [], inventory = [] }) => {
+const RentalRow = ({ booking, onUpdate, onDelete, allRentals = [], inventory = [], isEditingRow, setIsEditingRow }) => {
     const [rental, setRental] = useState({
         ...booking,
         equipment: typeof booking.equipment === "string"
@@ -88,48 +45,51 @@ const RentalRow = ({ booking, onUpdate, onDelete, allRentals = [], inventory = [
                 ? booking.equipment
                 : []
     });
-
     const [showEquipmentList, setShowEquipmentList] = useState(false);
     const [conflicts, setConflicts] = useState([]);
-    const [availableEquipment, setAvailableEquipment] = useState({});
+    const [hoveredConflict, setHoveredConflict] = useState(false);
+    const [editingField, setEditingField] = useState(null); // Для отслеживания редактируемого поля
+    const [initialValues, setInitialValues] = useState({}); // Для хранения начальных значений полей
 
-    // 🔹 Функция для проверки и обновления конфликтов
+    // Функция для проверки и обновления конфликтов
     const updateConflictsAndAvailability = useCallback(() => {
         const newConflicts = checkConflicts(rental.start_date, rental.end_date, rental.status);
-        const updatedAvailability = checkAvailability(rental, inventory, allRentals);
-
-        // Обновляем состояние только в случае изменений
-        setConflicts(prevConflicts => {
-            if (JSON.stringify(prevConflicts) !== JSON.stringify(newConflicts)) {
-                return newConflicts;
-            }
-            return prevConflicts;
-        });
-
-        setAvailableEquipment(prevAvailability => {
-            if (JSON.stringify(prevAvailability) !== JSON.stringify(updatedAvailability)) {
-                return updatedAvailability;
-            }
-            return prevAvailability;
-        });
-    }, [rental, inventory, allRentals]);
+        setConflicts(newConflicts);
+    }, [rental.start_date, rental.end_date, rental.status]);
 
     useEffect(() => {
         updateConflictsAndAvailability();
-    }, [rental.start_date, rental.end_date, rental.status, inventory, allRentals, updateConflictsAndAvailability]);
+    }, [rental.start_date, rental.end_date, rental.status]);
 
+    // Сохранение начальных значений при начале редактирования
+    const handleClickEdit = () => {
+        setIsEditingRow(rental.id); // Устанавливаем текущую строку как редактируемую
+        setInitialValues({
+            ...rental,  // Сохраняем начальные значения
+        });
+    };
+
+    // Обработчик изменения данных в таблице
     const handleChange = (e) => {
         const { name, value } = e.target;
         setRental(prev => ({ ...prev, [name]: value }));
     };
 
     const handleBlur = () => {
-        onUpdate(rental.id, {
-            ...rental,
-            start_date: rental.start_date || null,  // Если пусто → null
-            end_date: rental.end_date || null,
-            equipment: rental.equipment ?? []      // Гарантируем, что это массив
-        });
+        // Сравниваем старые и новые значения
+        const changedFields = Object.keys(rental).filter(key => rental[key] !== initialValues[key]);
+
+        // Если есть изменения, отправляем на сервер
+        if (changedFields.length > 0) {
+            onUpdate(rental.id, {
+                ...rental,
+                start_date: rental.start_date || null,
+                end_date: rental.end_date || null,
+                equipment: rental.equipment ?? []
+            });
+        }
+
+        setEditingField(null); // Снимаем редактируемое поле
     };
 
     const handleStatusChange = (status) => {
@@ -151,42 +111,98 @@ const RentalRow = ({ booking, onUpdate, onDelete, allRentals = [], inventory = [
         onUpdate(rental.id, { ...rental, equipment: updatedEquipment });
     };
 
+    const formatDate = (dateString) => {
+        const date = new Date(dateString);
+        const day = String(date.getDate()).padStart(2, "0");
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const hours = String(date.getHours()).padStart(2, "0");
+        const minutes = String(date.getMinutes()).padStart(2, "0");
+        return `${day}.${month} ${hours}:${minutes}`;
+    };
+
     return (
-        <tr>
-            <td>
-                <input
-                    type="datetime-local"
-                    name="start_date"
-                    value={rental.start_date ? new Date(rental.start_date).toISOString().slice(0, 16) : ""}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    step="900"
-                />
-                <input
-                    type="datetime-local"
-                    name="end_date"
-                    value={rental.end_date ? new Date(rental.end_date).toISOString().slice(0, 16) : ""}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    step="900"
-                />
+        <tr onClick={handleClickEdit}>
+            {/* Дата аренды */}
+            <td style={{ textAlign: "center" }}>
+                {isEditingRow === rental.id ? (
+                    <>
+                        С <input
+                            type="datetime-local"
+                            name="start_date"
+                            value={rental.start_date ? new Date(rental.start_date).toISOString().slice(0, 16) : ""}
+                            onChange={handleChange}
+                            onBlur={handleBlur}
+                        />
+                        <div>---</div>
+                        По <input
+                            type="datetime-local"
+                            name="end_date"
+                            value={rental.end_date ? new Date(rental.end_date).toISOString().slice(0, 16) : ""}
+                            onChange={handleChange}
+                            onBlur={handleBlur}
+                        />
+                    </>
+                ) : (
+                    <>
+                        С <span>{rental.start_date && formatDate(rental.start_date)}</span>
+                        <div>---</div>
+                        По <span>{rental.end_date && formatDate(rental.end_date)}</span>
+                    </>
+                )}
             </td>
 
-            <td><input type="text" name="renter" value={rental.renter || ""} onChange={handleChange} onBlur={handleBlur} /></td>
-            <td><input type="text" name="issuer" value={rental.issuer || ""} onChange={handleChange} onBlur={handleBlur} /></td>
-            <td><input type="text" name="receiver" value={rental.receiver || ""} onChange={handleChange} onBlur={handleBlur} /></td>
+            {/* Имя арендатора */}
+            <td style={{ textAlign: "center" }}>
+                {isEditingRow === rental.id ? (
+                    <input
+                        type="text"
+                        name="renter"
+                        value={rental.renter || ""}
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                    />
+                ) : (
+                    <span>{rental.renter}</span>
+                )}
+            </td>
 
-            <td>
+            {/* Кто выдал */}
+            <td style={{ textAlign: "center" }}>
+                {isEditingRow === rental.id ? (
+                    <input
+                        type="text"
+                        name="issuer"
+                        value={rental.issuer || ""}
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                    />
+                ) : (
+                    <span>{rental.issuer}</span>
+                )}
+            </td>
+
+            {/* Кто принял */}
+            <td style={{ textAlign: "center" }}>
+                {isEditingRow === rental.id ? (
+                    <input
+                        type="text"
+                        name="receiver"
+                        value={rental.receiver || ""}
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                    />
+                ) : (
+                    <span>{rental.receiver}</span>
+                )}
+            </td>
+
+            {/* Оборудование */}
+            <td style={{ textAlign: "center" }}>
                 <div className="equipment-container">
                     {rental.equipment?.map((eq, index) => (
                         <div key={index} className="equipment-tag-container">
                             <span className="equipment-tag">
                                 {eq.name} × {eq.quantity || 1}
-                                {availableEquipment[eq.name]?.upcomingReturns.length > 0 && (
-                                    <span className="availability-info">
-                                        (🔄 {availableEquipment[eq.name].upcomingReturns[0].quantity} ед. освободи  тся {availableEquipment[eq.name].upcomingReturns[0].returnDate.toLocaleString()} )
-                                    </span>
-                                )}
                             </span>
                             <button 
                                 className="remove-equipment-button" 
@@ -198,7 +214,7 @@ const RentalRow = ({ booking, onUpdate, onDelete, allRentals = [], inventory = [
                     ))}
                     <button 
                         onClick={() => setShowEquipmentList(true)} 
-                        className="equipment-button full-width"
+                        className="equipment-button"
                     >
                         Выбрать оборудование
                     </button>
@@ -213,24 +229,66 @@ const RentalRow = ({ booking, onUpdate, onDelete, allRentals = [], inventory = [
                 )}
             </td>
 
-            <td><input type="text" name="notes" value={rental.notes || ""} onChange={handleChange} onBlur={handleBlur} /></td>
+            {/* Примечания */}
+            <td style={{ textAlign: "center" }}>
+                {isEditingRow === rental.id ? (
+                    <input
+                        type="text"
+                        name="notes"
+                        value={rental.notes || ""}
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                    />
+                ) : (
+                    <span>{rental.notes}</span>
+                )}
+            </td>
 
-            <td>
+            {/* Где */}
+            <td style={{ textAlign: "center" }}>
+                <select
+                    value={rental.where}
+                    onChange={e => {
+                        const updatedRental = { ...rental, where: e.target.value };
+                        setRental(updatedRental);
+                        onUpdate(rental.id, updatedRental);
+                    }}
+                >
+                    <option value="в студии">В студии</option>
+                    <option value="на вынос">На вынос</option>
+                </select>
+            </td>
+
+            {/* Статус */}
+            <td style={{ textAlign: "center" }}>
                 <StatusSelect
                     value={rental.status}
                     onChange={handleStatusChange}
                 />
             </td>
 
-            <td>
-                {conflicts.length > 0 ? conflicts.map((conflict, index) => (
-                    <div key={index} className={`conflict-${conflict.severity}`}>
-                        {conflict.message}
-                    </div>
-                )) : "✓"}
+            {/* Конфликты */}
+            <td style={{ textAlign: "center" }}>
+                {conflicts.length > 0 ? (
+                    <span 
+                        className="conflict-icon"
+                        onMouseEnter={() => setHoveredConflict(true)} 
+                        onMouseLeave={() => setHoveredConflict(false)} // При уходе с иконки скрыть всплывающее окно
+                    >
+                        ⚠️
+                        {hoveredConflict && (
+                            <div className="conflict-tooltip">
+                                {conflicts[0]?.message}
+                            </div>
+                        )}
+                    </span>
+                ) : (
+                    <span>✓</span>
+                )}
             </td>
 
-            <td>
+            {/* Удалить */}
+            <td style={{ textAlign: "center" }}>
                 <button onClick={() => onDelete(rental.id)} className="delete-button">✕</button>
             </td>
         </tr>

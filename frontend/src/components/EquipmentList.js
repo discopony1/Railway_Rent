@@ -10,7 +10,7 @@ const modalRoot = document.getElementById("modal-root") || (() => {
     return el;
 })();
 
-const EquipmentList = ({ onSelect, onClose, selectedEquipment, startDate, endDate }) => {
+const EquipmentList = ({ onSelect, onClose, selectedEquipment, bookingsInfo }) => {
     const listRef = useRef(null);
     const [equipment, setEquipment] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -22,8 +22,6 @@ const EquipmentList = ({ onSelect, onClose, selectedEquipment, startDate, endDat
         const fetchEquipment = async () => {
             try {
                 const params = new URLSearchParams();
-                if (startDate) params.append("start_date", startDate);
-                if (endDate) params.append("end_date", endDate);
 
                 const response = await fetch(`${API_BASE_URL}/inventory?${params.toString()}`);
                 if (!response.ok) {
@@ -50,7 +48,7 @@ const EquipmentList = ({ onSelect, onClose, selectedEquipment, startDate, endDat
         return () => {
             document.removeEventListener("mousedown", handleClickOutside);
         };
-    }, [onClose, startDate, endDate]);
+    }, [onClose]);
 
     const updateQuantity = (itemId, newQuantity) => {
         setSelectedItems((prevSelected) =>
@@ -127,7 +125,10 @@ const EquipmentList = ({ onSelect, onClose, selectedEquipment, startDate, endDat
                                 value={item.quantity}
                                 onChange={(e) => updateQuantity(item.id, parseInt(e.target.value) || 1)}
                                 min="1"
-                                max={item.total - (item.rented || 0)} // Защита от NaN
+                                max={
+                                    (typeof item.total === 'number' ? item.total : 0) -
+                                    (typeof item.rented === 'number' ? item.rented : 0)
+                                }
                                 className="selected-quantity"
                             />
                         </div>
@@ -163,7 +164,16 @@ const EquipmentList = ({ onSelect, onClose, selectedEquipment, startDate, endDat
                                         </label>
                                         <div className={`availability ${isAvailable ? "available" : "unavailable"}`}>
                                             {isAvailable ? `Доступно: ${item.total - (item.rented || 0)}` : "Нет в наличии"}
+                                            {bookingsInfo && bookingsInfo[item.name] && bookingsInfo[item.name].length > 0 && (
+                                                (console.log("Bookings for " + item.name + ":", bookingsInfo[item.name])),
+                                                <ul>
+                                                    {bookingsInfo[item.name].map((booking) => (
+                                                        <li key={booking.id}>{booking.details}</li>
+                                                    ))}
+                                                </ul>
+                                            )}
                                         </div>
+                                        
                                     </li>
                                 );
                             })
@@ -191,6 +201,15 @@ const EquipmentList = ({ onSelect, onClose, selectedEquipment, startDate, endDat
                                                         </label>
                                                         <div className={`availability ${isAvailable ? "available" : "unavailable"}`}>
                                                             {isAvailable ? `Доступно: ${item.total - (item.rented || 0)}` : "Нет в наличии"}
+                                                            {bookingsInfo && bookingsInfo[item.name] && bookingsInfo[item.name].length > 0 && (
+                                                                (console.log("Bookings for " + item.name + ":", bookingsInfo[item.name])),
+                                                                <ul>
+                                                                    {bookingsInfo[item.name].map((booking) => (
+                                                                        <li key={booking.id}>{booking.details}</li>
+                                                                    ))}
+                                                                </ul>
+                                                            )}
+                                                        
                                                         </div>
                                                     </li>
                                                 );

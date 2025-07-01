@@ -1,67 +1,61 @@
-/* Контейнер с датами аренды - теперь по центру строки */
-.rental-date-cell {
-    margin-top: 5px;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    justify-content: center; /* Центрирование по высоте */
-    gap: 10px;
-    height: 100%; /* Убедимся, что контейнер занимает всю высоту строки */
-}
-
-/* Подсветка новой аренды */
-.new-rental {
-    background-color: rgba(255, 255, 0, 0.2); /* Нежная желтая подсветка */
-    transition: background-color 0.5s ease;
-}
-
-/* Дата аренды */
-.rental-date-input {
-    width: 200px;
-    padding: 6px;
-    margin: 10px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 20px;
-    text-align: center; /* Центрируем текст */
-    vertical-align: middle; /* Центрирование по высоте */
-    background-color: #fafafa;
-}
-
-.equipment-container {
-    position: relative;
-}
-
-.equipment-button {
-    display: block;
-    width: 100%;
-    margin-top: 10px;
+/* Блоки и кнопки внутри таблицы */
+td {
+    max-width: 150px; /* Максимальная ширина столбца */
+    word-wrap: break-word; /* Перенос текста на новую строку */
+    overflow: hidden visible; /* Обрезка текста, если он выходит за пределы */
+    text-overflow: ellipsis; /* Добавляем многоточие, если текст обрезается */
     padding: 10px;
-    border: 1px solid #bbb;
-    border-radius: 6px;
-    background-color: #f0f0f0;
-    cursor: pointer;
-    text-align: center;
-}
-
-.equipment-button.full-width {
-    width: 100%;
-}
-
-.equipment-tag-container {
-    position: relative;
-    display: inline-block;
-    margin: 5px;
-    padding: 1px;
     border: 1px solid #ddd;
-    border-radius: 6px;
-    background-color: #f9f9f9;
+    text-align: center;
+    transition: background 0.3s ease-in-out;
 }
 
+/* Кнопка выбора оборудования */
+.equipment-button {
+    width: 100%;
+    padding: 10px;
+    margin-top: 10px;
+    border: 1px solid #000;
+    border-radius: 6px;
+    background-color: #feed01;
+    color: black;
+    text-align: center;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.equipment-button:hover {
+    background-color: #c2c505;
+    border-color: #999;
+}
+
+/* Теги оборудования */
+.equipment-tag {
+    display: inline-block;
+    padding: 4px 6px;
+    margin: 2px;
+    border-radius: 6px;
+    background-color: #feed01;
+    border: 1px solid #feed01;
+    color: black;
+    font-size: 0.9em;
+    transition: background 0.2s ease-in-out, border-color 0.2s ease-in-out;
+    white-space: nowrap; /* Предотвращаем перенос тега на новую строку */
+    max-width: 150px; /* Ограничиваем ширину для каждого тега */
+
+    text-overflow: ellipsis;
+}
+
+.equipment-tag:hover {
+    background-color: #0056b3;
+    border-color: #004080;
+}
+
+/* Удаление тегов */
 .remove-equipment-button {
-    position: absolute;
-    top: 5px;
-    right: 1px;
+    top: -10px;
+    left:-15px;
+    position: relative;
     background: transparent;
     border: none;
     cursor: pointer;
@@ -73,37 +67,15 @@
     color: #C62828;
 }
 
-.equipment-button:hover {
-    background-color: #e9ecef;
-    border-color: #999;
-}
-
-/* Теги оборудования */
-.equipment-tag {
-    display: inline-block;
-    padding: 6px 10px;
-    margin: 2px;
-    border-radius: 6px;
-    background-color: #feed01;
-    border: 1px solid #feed01;
-    color: black;
-    font-size: 0.9em;
-    transition: background 0.2s ease-in-out, border-color 0.2s ease-in-out;
-}
-
-.equipment-tag:hover {
-    background-color: #0056b3;
-    border-color: #004080;
-}
-
 /* Разделение тегов */
 .equipment-tag + .equipment-tag {
     margin-left: 4px;
 }
 
-/* Контейнер кнопок (например, удаления) */
+/* Контейнер кнопок */
 .action-buttons {
-    display: flex;
+    position: absolute;
+    display:block;
     justify-content: center;
     align-items: center;
     gap: 5px;
@@ -121,39 +93,16 @@
 }
 
 .delete-button:hover {
-    color: #c82333;
+    color: #bb1024;
 }
 
-/* Конфликтные ячейки */
-.conflict {
-    background-color: #ffe6e6 !important;
-    border-left: 5px solid red;
-}
-
-/* Всплывающее окно с конфликтами */
-.conflict-popup {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: #ff4d4d;
-    color: white;
-    padding: 10px;
-    border-radius: 5px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-    z-index: 1000;
-}
-
-.conflict-popup p {
-    margin: 5px 0;
-}
-
-.conflict-popup button {
-    background: white;
-    color: black;
-    border: none;
-    padding: 5px 10px;
-    margin-top: 5px;
+/* Иконка конфликта */
+.conflict-icon {
+    position: relative;
+    display: inline-block;
     cursor: pointer;
+    font-size: 20px;
+    z-index: 9999;
 }
 
 /* Стиль для конфликта */
@@ -161,22 +110,6 @@
     color: #dc3545;
     background-color: rgba(220, 53, 69, 0.1);
     border-left: 4px solid #dc3545;
-    padding-left: 8px;
-}
-
-/* Стиль для предупреждения */
-.conflict-warning {
-    color: #ffc107;
-    background-color: rgba(255, 193, 7, 0.1);
-    border-left: 4px solid #ffc107;
-    padding-left: 8px;
-}
-
-/* Стиль для информационного сообщения */
-.conflict-info {
-    color: #17a2b8;
-    background-color: rgba(23, 162, 184, 0.1);
-    border-left: 4px solid #17a2b8;
     padding-left: 8px;
 }
 
@@ -200,39 +133,27 @@
     font-weight: 500;
 }
 
-/* Конфликтное сообщение */
-.conflict-cell {
-    font-weight: 500;
-}
-
-.conflicts-cell {
-    padding: 8px;
-}
-
-/* Добавить плавные анимации */
-.rental-table td, .rental-table th {
-    transition: background-color 0.3s ease;
-}
-
-/* Контейнер для оборудования */
-.equipment-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-}
-
-/* Стиль для кнопок в ячейке оборудования */
-.equipment-button {
-    font-size: 14px;
-    padding: 8px;
-    background-color: #feed01;
+/* Стиль для всплывающего окна с информацией о конфликте */
+.conflict-tooltip {
+    position: absolute;
+    margin-left: -75px;
+    background-color: #ff4d4d;
     color: white;
-    border: 1px solid #feed01;
+    padding: 5px;
     border-radius: 5px;
-    transition: background 0.2s ease;
+    font-size: 14px;
+    z-index: 10;
+    max-width: 200px; /* Устанавливаем ширину окна */
+    width: 150px; /* Даем окну адаптивную ширину */
+    height: 50px; 
+    visibility: hidden;
+    overlay:auto;
+    opacity: 0;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
-.equipment-button:hover {
-    background-color: #004080;
-    border-color: #00264d;
+/* Когда окно должно быть видимым */
+.conflict-icon:hover .conflict-tooltip {
+    visibility: visible;
+    opacity: 1;
 }

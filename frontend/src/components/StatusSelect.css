@@ -1,5 +1,6 @@
 .status-select {
-    padding: 4px 8px;
+    position: relative;
+    padding: 4px;
     border-radius: 4px;
     border: 1px solid #ddd;
     cursor: pointer;

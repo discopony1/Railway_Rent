@@ -45,29 +45,6 @@ const Sidebar = ({ toggleShift }) => {
                 {isOpen ? "<" : ">"}
             </button>
 
-            <div className="sidebar-buttons">
-                {/* Кнопка "Дата аренды" */}
-                <button 
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        setActivePopup(activePopup === "date" ? null : "date");
-                    }}
-                >
-                    Дата аренды
-                </button>
-
-                {/* Кнопка "Фильтры" */}
-                <button 
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        setActivePopup(activePopup === "filters" ? null : "filters");
-                    }}
-                >
-                    Фильтры
-                </button>
-            </div>
-
-            <h3>Фильтры</h3>
 
             <div className="sidebar-content">
                 {/* Всплывающее окно "Дата аренды" */}

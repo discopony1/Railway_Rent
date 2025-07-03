@@ -1,35 +1,10 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import "./styles.css";
-
-import EquipmentList from "./EquipmentList";
 
 const Sidebar = ({ toggleShift }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const [activePopup, setActivePopup] = useState(null); // Управляем открытыми окнами
-    const popupRefs = useRef({}); // Храним ссылки на все попапы
-
-    // Закрытие всплывающего окна при клике вне его области
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (
-                activePopup &&
-                popupRefs.current[activePopup] &&
-                !popupRefs.current[activePopup].contains(event.target)
-            ) {
-                setActivePopup(null);
-            }
-        };
-
-        if (activePopup) {
-            document.addEventListener("mousedown", handleClickOutside);
-        } else {
-            document.removeEventListener("mousedown", handleClickOutside);
-        }
-
-        return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
-        };
-    }, [activePopup]);
+    const location = useLocation();
 
     const handleToggle = () => {
         setIsOpen(!isOpen);
@@ -42,33 +17,35 @@ const Sidebar = ({ toggleShift }) => {
                 className={`sidebar-toggle ${isOpen ? "rotated" : ""}`} 
                 onClick={handleToggle}
             >
-                {isOpen ? "<" : ">"}
+                {isOpen ? "◀" : "▶"}
             </button>
 
-
-            <div className="sidebar-content">
-                {/* Всплывающее окно "Дата аренды" */}
-                {activePopup === "date" && (
-                    <div 
-                        className="popup" 
-                        ref={(el) => (popupRefs.current["date"] = el)}
-                    >
-                        <button className="close-btn" onClick={() => setActivePopup(null)}>×</button>
-                        <Calendar />
+            {isOpen && (
+                <div className="sidebar-content">
+                    <h3>Навигация</h3>
+                    <nav className="sidebar-nav">
+                        <Link 
+                            to="/" 
+                            className={`nav-item ${location.pathname === '/' ? 'active' : ''}`}
+                        >
+                            📋 Таблица аренды
+                        </Link>
+                        <Link 
+                            to="/inventory" 
+                            className={`nav-item ${location.pathname === '/inventory' ? 'active' : ''}`}
+                        >
+                            📦 Инвентарь
+                        </Link>
+                    </nav>
+                    
+                    <h3>Действия</h3>
+                    <div className="sidebar-actions">
+                        <button className="action-item disabled">
+                            ⚙️ Настройки
+                        </button>
                     </div>
-                )}
-
-                {/* Всплывающее окно "Фильтры" */}
-                {activePopup === "filters" && (
-                    <div 
-                        className="popup" 
-                        ref={(el) => (popupRefs.current["filters"] = el)}
-                    >
-                        <button className="close-btn" onClick={() => setActivePopup(null)}>×</button>
-                        <EquipmentList />
-                    </div>
-                )}
-            </div>
+                </div>
+            )}
         </div>
     );
 };

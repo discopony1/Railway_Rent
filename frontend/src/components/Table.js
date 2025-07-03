@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import RentalRow from "./RentalRow";
+import LoadingSpinner from "./LoadingSpinner";
 import API_BASE_URL from "../config";
-import logo from '../logo.jpg'
+import logo from '../logo.png'
 import './Table.css';
 
 const Table = () => {
@@ -34,7 +35,10 @@ const Table = () => {
 
     // Функция сортировки
     const sortBookings = (bookingsList) => {
-        return [...bookingsList].sort((a, b) => {
+        // Фильтруем null элементы перед сортировкой
+        const validBookings = bookingsList.filter(booking => booking !== null && booking !== undefined);
+        
+        return [...validBookings].sort((a, b) => {
             if (!a.start_date && !b.start_date) return 0;
             if (!a.start_date) return -1;
             if (!b.start_date) return 1;
@@ -48,7 +52,15 @@ const Table = () => {
             const response = await fetch(`${API_BASE_URL}/bookings`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({})
+                body: JSON.stringify({
+                    renter: "",
+                    issuer: "",
+                    receiver: "",
+                    status: "Бронь",
+                    notes: "",
+                    equipment: [],
+                    where: "в студии"
+                })
             });
 
             if (!response.ok) {
@@ -57,7 +69,14 @@ const Table = () => {
             }
 
             const savedRental = await response.json();
-            setBookings(prevBookings => sortBookings([savedRental, ...prevBookings])); // ✅ Добавляем вверх + сортируем
+            console.log("📥 Созданная аренда:", savedRental);
+            
+            if (savedRental && typeof savedRental === 'object') {
+                setBookings(prevBookings => sortBookings([savedRental, ...prevBookings])); // ✅ Добавляем вверх + сортируем
+            } else {
+                console.error("❌ API вернул некорректные данные:", savedRental);
+                setError("Не удалось создать бронирование - некорректный ответ сервера");
+            }
         } catch (error) {
             console.error("Ошибка создания аренды:", error);
             setError(error.message || "Не удалось создать бронирование");
@@ -71,7 +90,7 @@ const Table = () => {
             start_date: updatedData.start_date ? formatDateForAPI(updatedData.start_date) : undefined, 
             end_date: updatedData.end_date ? formatDateForAPI(updatedData.end_date) : undefined, 
             equipment: updatedData.equipment.map(({ name, quantity }) => ({ name, quantity })), 
-            where: updatedData.where // Добавляем новое поле "Где"
+            where: updatedData.where || "в студии" // Устанавливаем значение по умолчанию
         };
 
         console.log("📤 Отправляем в API:", formattedData); // Проверяем данные перед отправкой
@@ -121,45 +140,49 @@ const Table = () => {
     };
 
     return (
-        <div>
-            <div className="table-header-container">
-                <div className="table-header">
-                <button onClick={addRental} className="add-button">➕ Добавить аренду</button>
+        <div className="page-container">
+            <div className="rental-table-header-container">
+                <div className="rental-table-header">
+                    <button onClick={addRental} className="add-button">➕ Добавить аренду</button>
                     <h2>📋 Таблица аренды</h2>
                     <img src={logo} alt="Logo" className="logo" /> 
                 </div>
             </div>
-
-            {error && <p className="error-message">{error}</p>}
-            <table className="rental-table">
-                <thead>
-                    <tr>
-                        <th>Дата аренды</th>
-                        <th>Имя</th>
-                        <th>Кто выдал</th>
-                        <th>Кто принял</th>
-                        <th>Оборудование</th>
-                        <th>Примечания</th>
-                        <th>Где</th> 
-                        <th>Статус</th>
-                        <th></th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {bookings.map((booking) => (
-                        <RentalRow 
-                            key={booking.id || `new-${Math.random()}`}
-                            booking={booking}
-                            onUpdate={updateRental}
-                            onDelete={() => handleDelete(booking.id)}
-                            isEditingRow={isEditingRow}
-                            setIsEditingRow={setIsEditingRow}
-                            onClickEdit={() => handleClickEdit(booking.id)}
-                        />
-                    ))}
-                </tbody>
-            </table>
+            
+            <div className="rental-table-container">
+                <div className="rental-table-scroll-container">
+                    {error && <p className="error-message">{error}</p>}
+                    <table className="rental-table">
+                        <thead>
+                            <tr>
+                                <th>Дата аренды</th>
+                                <th>Имя</th>
+                                <th>Кто выдал</th>
+                                <th>Кто принял</th>
+                                <th>Оборудование</th>
+                                <th>Примечания</th>
+                                <th>Где</th> 
+                                <th>Статус</th>
+                                <th></th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {bookings.map((booking) => (
+                                <RentalRow 
+                                    key={booking.id || `new-${Math.random()}`}
+                                    booking={booking}
+                                    onUpdate={updateRental}
+                                    onDelete={() => handleDelete(booking.id)}
+                                    isEditingRow={isEditingRow}
+                                    setIsEditingRow={setIsEditingRow}
+                                    onClickEdit={() => handleClickEdit(booking.id)}
+                                />
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     );
 };

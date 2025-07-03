@@ -82,11 +82,42 @@ def create_inventory_item():
     belongs_to = data.get('belongs_to')
 
 
-    if not all([name, category, subcategory, model, serial_number, status, notes, total, belongs_to]):
-        return jsonify({"error": "Все поля должны быть заполнены"}), 400
+    if not name or not category:
+        return jsonify({"error": "Поля 'name' и 'category' обязательны для заполнения"}), 400
 
-    new_item_id = Inventory.create_item(name, category, subcategory, model, serial_number, status, notes, total, belongs_to)
+    new_item_id = Inventory.create_item(name, category, subcategory, model, serial_number, notes, status, total, belongs_to)
     if new_item_id:
         return jsonify({"success": True, "id": new_item_id}), 201
     else:
         return jsonify({"error": "Не удалось создать оборудование"}), 500
+
+# 🔹 Удаление оборудования по ID
+@bp.route("/<int:item_id>", methods=["DELETE"])
+@handle_db_error
+def delete_inventory_item(item_id):
+    deleted = Inventory.delete_item(item_id)
+    if deleted:
+        logger.info(f"Item {item_id} deleted successfully")
+        return jsonify({"success": True}), 200
+    else:
+        logger.error(f"Failed to delete item {item_id}")
+        return jsonify({"error": "Не удалось удалить оборудование"}), 500
+
+# 🔹 Получение доступного оборудования для указанного периода
+@bp.route("/available", methods=["GET"])
+@handle_db_error
+def get_available_equipment():
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    exclude_booking_id = request.args.get('exclude_booking_id', type=int)
+    current_equipment = request.args.get('current_equipment')  # JSON строка с текущим оборудованием
+    
+    if not start_date or not end_date:
+        return jsonify({"error": "Необходимо указать start_date и end_date"}), 400
+    
+    try:
+        equipment_list = Inventory.get_available_equipment(start_date, end_date, exclude_booking_id, current_equipment)
+        return jsonify(equipment_list), 200
+    except Exception as e:
+        logger.error(f"Ошибка при получении доступного оборудования: {str(e)}")
+        return jsonify({"error": "Не удалось получить доступное оборудование"}), 500

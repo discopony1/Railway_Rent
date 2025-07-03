@@ -1,13 +1,150 @@
 /* Блоки и кнопки внутри таблицы */
 td {
-    max-width: 150px; /* Максимальная ширина столбца */
     word-wrap: break-word; /* Перенос текста на новую строку */
-    overflow: hidden visible; /* Обрезка текста, если он выходит за пределы */
-    text-overflow: ellipsis; /* Добавляем многоточие, если текст обрезается */
     padding: 10px;
     border: 1px solid #ddd;
     text-align: center;
     transition: background 0.3s ease-in-out;
+    vertical-align: top;
+}
+
+/* Поля ввода при редактировании */
+td input[type="text"], 
+td input[type="datetime-local"], 
+td textarea {
+    width: 100%;
+    min-width: 120px;
+    padding: 8px;
+    border: 2px solid #e1e5e9;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    background: white;
+    transition: all 0.2s ease;
+    resize: none;
+}
+
+td input[type="text"]:focus, 
+td input[type="datetime-local"]:focus, 
+td textarea:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Стилизация календаря datetime-local */
+td input[type="datetime-local"] {
+    color-scheme: light;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border: 2px solid #667eea;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-weight: 500;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+    transition: all 0.2s ease;
+}
+
+td input[type="datetime-local"]:hover {
+    border-color: #5a67d8;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+    transform: translateY(-1px);
+}
+
+td input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 6px;
+    padding: 6px;
+    cursor: pointer;
+    margin-left: 10px;
+    filter: brightness(0) invert(1);
+    transition: all 0.2s ease;
+}
+
+td input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+    transform: scale(1.1);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+td input[type="datetime-local"]::-webkit-datetime-edit {
+    color: #333;
+    font-weight: 500;
+}
+
+td input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper {
+    background: transparent;
+    padding: 2px;
+}
+
+td input[type="datetime-local"]::-webkit-datetime-edit-text {
+    color: #667eea;
+    font-weight: 600;
+}
+
+td input[type="datetime-local"]::-webkit-datetime-edit-month-field,
+td input[type="datetime-local"]::-webkit-datetime-edit-day-field,
+td input[type="datetime-local"]::-webkit-datetime-edit-year-field,
+td input[type="datetime-local"]::-webkit-datetime-edit-hour-field,
+td input[type="datetime-local"]::-webkit-datetime-edit-minute-field {
+    background: rgba(102, 126, 234, 0.1);
+    border-radius: 3px;
+    padding: 2px 4px;
+    margin: 0 1px;
+    color: #333;
+    font-weight: 500;
+}
+
+td input[type="datetime-local"]::-webkit-datetime-edit-month-field:focus,
+td input[type="datetime-local"]::-webkit-datetime-edit-day-field:focus,
+td input[type="datetime-local"]::-webkit-datetime-edit-year-field:focus,
+td input[type="datetime-local"]::-webkit-datetime-edit-hour-field:focus,
+td input[type="datetime-local"]::-webkit-datetime-edit-minute-field:focus {
+    background: rgba(102, 126, 234, 0.2);
+    outline: none;
+}
+
+/* Автоматическое изменение размера для textarea */
+td textarea {
+    min-height: 40px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+/* Стили для селекта "Где" */
+.where-select {
+    position: relative;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 2px solid #ddd;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    min-width: 100px;
+}
+
+.where-select.where-в-студии {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-color: #667eea;
+    color: white;
+}
+
+.where-select.where-на-вынос {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    border-color: #f093fb;
+    color: white;
+}
+
+.where-select:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Стили для опций селекта "Где" */
+.where-select option {
+    background-color: white;
+    color: black;
+    padding: 8px;
 }
 
 /* Кнопка выбора оборудования */
@@ -29,42 +166,77 @@ td {
     border-color: #999;
 }
 
+/* Контейнер тегов оборудования */
+.equipment-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: flex-start;
+}
+
 /* Теги оборудования */
 .equipment-tag {
-    display: inline-block;
-    padding: 4px 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
     margin: 2px;
-    border-radius: 6px;
-    background-color: #feed01;
-    border: 1px solid #feed01;
-    color: black;
-    font-size: 0.9em;
-    transition: background 0.2s ease-in-out, border-color 0.2s ease-in-out;
-    white-space: nowrap; /* Предотвращаем перенос тега на новую строку */
-    max-width: 150px; /* Ограничиваем ширину для каждого тега */
+    border-radius: 8px;
+    color: white;
+    font-size: 0.85em;
+    font-weight: 500;
+    transition: all 0.2s ease-in-out;
+    white-space: nowrap;
+    max-width: 180px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    position: relative;
+}
 
+.equipment-tag-content {
+    display: inline-block;
+    overflow: hidden;
     text-overflow: ellipsis;
 }
 
-.equipment-tag:hover {
-    background-color: #0056b3;
-    border-color: #004080;
-}
-
-/* Удаление тегов */
-.remove-equipment-button {
-    top: -10px;
-    left:-15px;
-    position: relative;
-    background: transparent;
-    border: none;
+.equipment-tag-remove {
     cursor: pointer;
-    font-size: 8px;
-    color: #D32F2F;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+    transition: background-color 0.2s ease;
+    margin-left: 4px;
+    flex-shrink: 0;
 }
 
-.remove-equipment-button:hover {
-    color: #C62828;
+.equipment-tag-remove:hover {
+    background: rgba(255, 255, 255, 0.4);
+}
+
+.equipment-tag:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+/* Анимация загрузки для тегов оборудования */
+.equipment-tag.loading {
+    animation: pulse 1.5s ease-in-out infinite;
+    background: linear-gradient(90deg, #95a5a6, #bdc3c7, #95a5a6) !important;
+    background-size: 200% 100%;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
 }
 
 /* Разделение тегов */
@@ -102,7 +274,8 @@ td {
     display: inline-block;
     cursor: pointer;
     font-size: 20px;
-    z-index: 9999;
+    z-index: 10001; /* Поверх модальных окон */
+    filter: none; /* Исключаем из размытия */
 }
 
 /* Стиль для конфликта */
@@ -135,25 +308,54 @@ td {
 
 /* Стиль для всплывающего окна с информацией о конфликте */
 .conflict-tooltip {
-    position: absolute;
-    margin-left: -75px;
-    background-color: #ff4d4d;
+    position: fixed;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
-    padding: 5px;
-    border-radius: 5px;
+    padding: 14px 18px;
+    border-radius: 10px;
     font-size: 14px;
-    z-index: 10;
-    max-width: 200px; /* Устанавливаем ширину окна */
-    width: 150px; /* Даем окну адаптивную ширину */
-    height: 50px; 
-    visibility: hidden;
-    overlay:auto;
-    opacity: 0;
-    transition: opacity 0.3s ease, visibility 0.3s ease;
+    z-index: 10001; /* Поверх модальных окон */
+    min-width: 280px;
+    max-width: 400px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.3);
+    border: 2px solid rgba(255,255,255,0.2);
+    pointer-events: none;
+    transform: translateX(-50%) translateY(-100%);
+    white-space: normal;
+    word-wrap: break-word;
+    backdrop-filter: blur(10px);
+    margin-top: -15px;
+    filter: none; /* Исключаем из размытия */
 }
 
-/* Когда окно должно быть видимым */
-.conflict-icon:hover .conflict-tooltip {
-    visibility: visible;
-    opacity: 1;
+.conflict-header {
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #fff;
+}
+
+.conflict-item {
+    margin: 3px 0;
+    padding: 3px 0;
+}
+
+.conflict-item.error {
+    color: #ff6b6b;
+}
+
+.conflict-item.warning {
+    color: #feca57;
+}
+
+.conflict-icon.error {
+    color: #dc3545;
+}
+
+.conflict-icon.warning {
+    color: #ffc107;
+}
+
+.no-conflict {
+    color: #28a745;
+    font-size: 16px;
 }

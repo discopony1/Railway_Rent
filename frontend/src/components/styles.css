@@ -1,23 +1,121 @@
-/* Стили для кнопок навигации */
-.header {
+/* Общие стили для контента */
+.content {
+    position: relative;
+    transition: margin-left 0.3s ease;
+    min-height: 100vh;
+}
+
+.content.shifted {
+    margin-left: 250px;
+}
+
+/* Стили для сайдбара */
+.sidebar {
+    position: fixed;
+    left: -250px;
+    top: 0;
+    width: 250px;
+    height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    transition: left 0.3s ease;
+    z-index: 1000;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
+}
+
+.sidebar.open {
+    left: 0;
+}
+
+.sidebar-toggle {
+    position: absolute;
+    right: -40px;
+    top: 20px;
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 0 5px 5px 0;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.3);
+}
+
+.sidebar-toggle:hover {
+    background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+    transform: translateX(2px);
+}
+
+.sidebar-content {
+    padding: 60px 20px 20px;
+    height: 100%;
+    overflow-y: auto;
+}
+
+.sidebar-content h3 {
+    margin: 0 0 15px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #e2e8f0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.sidebar-nav {
     display: flex;
-    justify-content: flex-end;
-    padding: 20px;
-    background-color: #fff;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    flex-direction: column;
+    margin-bottom: 30px;
 }
 
-.nav-link {
-    margin-left: 20px;
-    padding: 10px;
+.nav-item {
+    display: block;
+    padding: 12px 15px;
+    margin-bottom: 5px;
     text-decoration: none;
-    color: #333;
-    font-weight: bold;
-    border-radius: 5px;
-    transition: background-color 0.3s;
+    color: white;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    font-weight: 500;
 }
 
-.nav-link:hover {
-    background-color: #feed01;
-    color: black;
+.nav-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateX(5px);
+    color: white;
+}
+
+.nav-item.active {
+    background: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.sidebar-actions {
+    display: flex;
+    flex-direction: column;
+}
+
+.action-item {
+    display: block;
+    padding: 12px 15px;
+    margin-bottom: 5px;
+    background: none;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 500;
+    text-align: left;
+}
+
+.action-item:hover:not(.disabled) {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateX(5px);
+}
+
+.action-item.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }

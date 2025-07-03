@@ -21,12 +21,17 @@ def execute_query(query, params=None, fetch=True):
         if fetch:
             rows = cursor.fetchall()
             columns = [desc[0] for desc in cursor.description]
+            conn.commit()  # Коммитим и для fetch=True
             return [dict(zip(columns, row)) for row in rows]
         conn.commit()
-        return cursor.rowcount
+        rowcount = cursor.rowcount
+        logger.info(f"🔍 SQL rowcount: {rowcount}")
+        return rowcount
     except Exception as e:
         conn.rollback()
-        logger.error(f"Ошибка выполнения запроса: {str(e)}")
+        logger.error(f"❌ Ошибка выполнения SQL запроса: {str(e)}")
+        logger.error(f"❌ SQL: {query}")
+        logger.error(f"❌ Params: {params}")
         raise
     finally:
         cursor.close()
@@ -43,7 +48,11 @@ class Booking:
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
         """
-        equipment = json.dumps(data.get("equipment", []))
+        equipment_data = data.get("equipment", [])
+        if isinstance(equipment_data, str):
+            equipment = equipment_data  # Уже JSON строка
+        else:
+            equipment = json.dumps(equipment_data)  # Преобразуем в JSON
         params = (
             data.get("start_date"),
             data.get("end_date"),
@@ -55,7 +64,9 @@ class Booking:
             equipment,
             where
         )
+        logger.info(f"🔍 CREATE SQL params: {params}")
         result = execute_query(query, params, fetch=True)
+        logger.info(f"🔍 CREATE result: {result}")
         return result[0]["id"] if result else None
 
     @staticmethod
@@ -74,7 +85,11 @@ class Booking:
                 "where" = %s
             WHERE id = %s
         """
-        equipment = json.dumps(data.get("equipment", []))
+        equipment_data = data.get("equipment", [])
+        if isinstance(equipment_data, str):
+            equipment = equipment_data  # Уже JSON строка
+        else:
+            equipment = json.dumps(equipment_data)  # Преобразуем в JSON
         params = (
             data.get("start_date"),
             data.get("end_date"),
@@ -87,7 +102,10 @@ class Booking:
             where,
             booking_id
         )
-        return execute_query(query, params, fetch=False)
+        logger.info(f"🔍 SQL params: {params}")
+        result = execute_query(query, params, fetch=False)
+        logger.info(f"🔍 Updated rows count: {result}")
+        return result > 0  # Возвращаем True если обновлена хотя бы одна строка
 
     @staticmethod
     def get_all():
@@ -170,3 +188,111 @@ class Inventory:
         """
         params = (name, category, subcategory, model, serial_number, notes, status, total, belongs_to, equipment_id)
         return execute_query(query, params, fetch=False)
+
+    @staticmethod
+    def delete_item(equipment_id):
+        """Удаляет оборудование по ID."""
+        query = "DELETE FROM inventory WHERE id = %s"
+        params = (equipment_id,)
+        return execute_query(query, params, fetch=False)
+
+    @staticmethod
+    def get_available_equipment(start_date, end_date, exclude_booking_id=None, current_equipment=None):
+        """
+        Возвращает список оборудования с доступным количеством для указанного периода.
+        
+        Args:
+            start_date: Дата начала аренды
+            end_date: Дата окончания аренды
+            exclude_booking_id: ID бронирования, которое нужно исключить из расчета (для редактирования)
+        """
+        # Получаем весь инвентарь
+        inventory_query = """
+            SELECT id, name, category, subcategory, model, serial_number, notes, status, total, belongs_to
+            FROM inventory
+        """
+        inventory = execute_query(inventory_query, fetch=True)
+        
+        # Получаем все активные бронирования в указанном периоде
+        bookings_query = """
+            SELECT equipment, start_date, end_date, status
+            FROM bookings 
+            WHERE start_date IS NOT NULL 
+            AND end_date IS NOT NULL
+            AND status IN ('Бронь', 'Выдано')
+            AND start_date < %s AND end_date > %s
+        """
+        params = [end_date, start_date]
+        
+        if exclude_booking_id:
+            bookings_query += " AND id != %s"
+            params.append(exclude_booking_id)
+            
+        bookings = execute_query(bookings_query, params, fetch=True)
+        
+        # Подсчитываем занятое оборудование по именам
+        occupied_equipment = {}
+        
+        for booking in bookings:
+            try:
+                equipment_data = booking['equipment']
+                if isinstance(equipment_data, str):
+                    equipment_list = json.loads(equipment_data) if equipment_data else []
+                elif isinstance(equipment_data, list):
+                    equipment_list = equipment_data  # Уже список
+                else:
+                    equipment_list = []
+                    
+                for item in equipment_list:
+                    equipment_name = item.get('name', '')
+                    quantity = item.get('quantity', 0)
+                    
+                    # Обрабатываем null/None значения
+                    if quantity is None:
+                        quantity = 1  # По умолчанию 1 штука
+                    else:
+                        quantity = int(quantity)
+                    
+                    if equipment_name and quantity > 0:
+                        if equipment_name not in occupied_equipment:
+                            occupied_equipment[equipment_name] = 0
+                        occupied_equipment[equipment_name] += quantity
+            except (json.JSONDecodeError, TypeError) as e:
+                logger.warning(f"Ошибка парсинга equipment в бронировании: {e}")
+                continue
+        
+        # Обработка текущего оборудования, которое уже выбрано в редактируемой записи
+        current_equipment_count = {}
+        if current_equipment:
+            try:
+                current_list = json.loads(current_equipment) if isinstance(current_equipment, str) else current_equipment
+                for item in current_list:
+                    equipment_name = item.get('name', '')
+                    quantity = item.get('quantity', 0)
+                    if quantity is None:
+                        quantity = 1
+                    else:
+                        quantity = int(quantity)
+                    
+                    if equipment_name and quantity > 0:
+                        current_equipment_count[equipment_name] = quantity
+            except (json.JSONDecodeError, TypeError) as e:
+                logger.warning(f"Ошибка парсинга current_equipment: {e}")
+
+        # Добавляем информацию о доступности к инвентарю
+        for item in inventory:
+            item_name = item['name']
+            total_quantity = item['total'] or 0
+            occupied_quantity = occupied_equipment.get(item_name, 0)
+            current_usage = current_equipment_count.get(item_name, 0)
+            
+            # Рассчитываем доступность: общее количество минус занятое другими бронированиями
+            # (occupied_quantity уже включает current_usage, поэтому вычитаем его чтобы не учитывать дважды)
+            truly_occupied = occupied_quantity - current_usage
+            available_quantity = max(0, total_quantity - truly_occupied)
+            
+            item['available'] = available_quantity
+            item['occupied'] = truly_occupied
+            item['current_usage'] = current_usage
+            
+        return inventory

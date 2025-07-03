@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import LoadingSpinner from './LoadingSpinner';
 import './Inventory.css';
 import logo from '../inventory_logo.png'
 
@@ -11,6 +12,7 @@ const InventoryTable = () => {
     const [updatedData, setUpdatedData] = useState({});
     const [notification, setNotification] = useState(null);
     const [isProcessing, setIsProcessing] = useState(false);
+    const tableRef = useRef(null);
 
     // Загрузка данных с сервера
     useEffect(() => {
@@ -48,6 +50,100 @@ const InventoryTable = () => {
             window.removeEventListener('scroll', handleScroll);
         };
     }, []);
+
+    // Обработка кликов вне таблицы для выключения редактирования
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (tableRef.current && !tableRef.current.contains(event.target) && editingItem !== null) {
+                // Если клик вне таблицы и есть редактируемый элемент, выключаем редактирование
+                setEditingItem(null);
+                setUpdatedData({});
+            }
+        };
+
+        // Добавляем обработчик только если есть редактируемый элемент
+        if (editingItem !== null) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [editingItem]);
+
+    // Удаление оборудования
+    const deleteEquipment = async (itemId) => {
+        try {
+            const response = await fetch(`http://localhost:5000/api/inventory/${itemId}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Ошибка ${response.status}`);
+            }
+
+            const result = await response.json();
+            
+            if (result.success) {
+                // Удаляем элемент из состояния
+                setInventory(prevInventory => prevInventory.filter(item => item.id !== itemId));
+                setEditingItem(null); // Выходим из режима редактирования
+                setNotification({ message: "Оборудование удалено", type: "success" });
+                
+                // Убираем уведомление через 3 секунды
+                setTimeout(() => setNotification(null), 3000);
+            }
+        } catch (error) {
+            console.error("Ошибка удаления оборудования:", error);
+            setNotification({ message: "Ошибка при удалении оборудования", type: "error" });
+            setTimeout(() => setNotification(null), 3000);
+        }
+    };
+
+    // Добавление нового оборудования
+    const addEquipment = async () => {
+        try {
+            const newItem = {
+                name: "Новое оборудование",
+                category: "Прочее",
+                subcategory: "",
+                model: "",
+                serial_number: "",
+                notes: "",
+                status: "",
+                total: 1,
+                belongs_to: "МШ"
+            };
+
+            const response = await fetch("http://localhost:5000/api/inventory/create", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newItem)
+            });
+
+            if (!response.ok) {
+                throw new Error(`Ошибка ${response.status}`);
+            }
+
+            const result = await response.json();
+            
+            if (result.success && result.id) {
+                // Создаем новый объект с полученным ID
+                const newEquipment = { ...newItem, id: result.id };
+                setInventory(prevInventory => [newEquipment, ...prevInventory]);
+                setEditingItem(result.id); // Сразу переводим в режим редактирования
+                setNotification({ message: "Новое оборудование добавлено", type: "success" });
+                
+                // Убираем уведомление через 3 секунды
+                setTimeout(() => setNotification(null), 3000);
+            }
+        } catch (error) {
+            console.error("Ошибка создания оборудования:", error);
+            setNotification({ message: "Ошибка при создании оборудования", type: "error" });
+            setTimeout(() => setNotification(null), 3000);
+        }
+    };
 
     // Обработчик изменения данных в таблице
     const handleInputChange = (e, field, id) => {
@@ -229,8 +325,9 @@ const InventoryTable = () => {
                         />
                     </td>
                     <td>
-                        <button onClick={() => handleSave(item.id)}>Сохранить</button>
-                        <button onClick={() => setEditingItem(null)}>Отменить</button>
+                        <button onClick={() => handleSave(item.id)} className="save-button">Сохранить</button>
+                        <button onClick={() => setEditingItem(null)} className="cancel-button">Отменить</button>
+                        <button onClick={() => deleteEquipment(item.id)} className="delete-button">Удалить запись</button>
                     </td>
                 </tr>
             );
@@ -256,44 +353,48 @@ const InventoryTable = () => {
     };
 
     return (
-        <div>
+        <div className="page-container">
             <div className="table-header-container">
                 <div className="table-header">
-                <button>➕ Добавить оборудование</button>
+                    <button onClick={addEquipment} className="add-button">➕ Добавить оборудование</button>
                     <h2>📋 Инвентарь</h2>
                     <img src={logo} alt="Logo" className="logo" /> 
                 </div>
             </div>
-
-            {loading ? (
-                <p>Загрузка...</p>
-            ) : (
-                <table>
-                    <thead>
-                        <tr>
-                            <th onClick={() => handleSort('id')}>ID {renderSortIcon('id')}</th>
-                            <th onClick={() => handleSort('name')}>Название {renderSortIcon('name')}</th>
-                            <th onClick={() => handleSort('category')}>Категория {renderSortIcon('category')}</th>
-                            <th onClick={() => handleSort('subcategory')}>Подкатегория {renderSortIcon('subcategory')}</th>
-                            <th onClick={() => handleSort('model')}>Модель {renderSortIcon('model')}</th>
-                            <th onClick={() => handleSort('serial_number')}>Серийный номер {renderSortIcon('serial_number')}</th>
-                            <th onClick={() => handleSort('notes')}>Примечания {renderSortIcon('notes')}</th>
-                            <th onClick={() => handleSort('status')}>Статус {renderSortIcon('status')}</th>
-                            <th onClick={() => handleSort('total')}>Общее количество {renderSortIcon('total')}</th>
-                            <th onClick={() => handleSort('belongs_to')}>Кому принадлежит {renderSortIcon('belongs_to')}</th>
-                            <th>Действия</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {inventory.map(renderRow)}
-                    </tbody>
-                </table>
-            )}
-            {notification && (
-                <div className={`notification ${notification.type}`}>
-                    {notification.message}
+            
+            <div className="table-container">
+                <div className="table-scroll-container">
+                    {loading ? (
+                        <LoadingSpinner message="Загрузка инвентаря..." size="large" />
+                    ) : (
+                        <table ref={tableRef} className="inventory-table">
+                            <thead>
+                                <tr>
+                                    <th onClick={() => handleSort('id')}>ID {renderSortIcon('id')}</th>
+                                    <th onClick={() => handleSort('name')}>Название {renderSortIcon('name')}</th>
+                                    <th onClick={() => handleSort('category')}>Категория {renderSortIcon('category')}</th>
+                                    <th onClick={() => handleSort('subcategory')}>Подкатегория {renderSortIcon('subcategory')}</th>
+                                    <th onClick={() => handleSort('model')}>Модель {renderSortIcon('model')}</th>
+                                    <th onClick={() => handleSort('serial_number')}>Серийный номер {renderSortIcon('serial_number')}</th>
+                                    <th onClick={() => handleSort('notes')}>Примечания {renderSortIcon('notes')}</th>
+                                    <th onClick={() => handleSort('status')}>Статус {renderSortIcon('status')}</th>
+                                    <th onClick={() => handleSort('total')}>Общее количество {renderSortIcon('total')}</th>
+                                    <th onClick={() => handleSort('belongs_to')}>Кому принадлежит {renderSortIcon('belongs_to')}</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {inventory.map(renderRow)}
+                            </tbody>
+                        </table>
+                    )}
+                    {notification && (
+                        <div className={`notification ${notification.type}`}>
+                            {notification.message}
+                        </div>
+                    )}
                 </div>
-            )}
+            </div>
         </div>
     );
 };

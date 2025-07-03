@@ -1,47 +1,216 @@
-/* Стили для таблицы */
-table {
+/* Стили для инвентарной таблицы */
+.inventory-table {
     width: 100%;
     border-collapse: collapse;
-    overflow-y: auto; /* Добавляем прокрутку для таблицы */
-    display: block;
-    max-height: 795px; /* Максимальная высота таблицы */
+    margin: 20px 0;
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 5px 30px rgba(0, 0, 0, 0.1);
 }
 
-/* Стили для заголовка таблицы */
-thead {
+/* Заголовки инвентарной таблицы */
+.inventory-table th {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+    font-weight: 600;
+    padding: 18px 16px;
+    text-align: center;
+    border: none;
     position: sticky;
     top: 0;
-    background-color: #feed01;
-    z-index: 1;
+    z-index: 50;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
 }
 
-/* Для иконок сортировки */
-th {
-    padding: 10px;
-    background-color: #feed01;
-    text-align: center;
-    font-weight: bold;
-    border: 0px solid #ffffff;
+.inventory-table th:hover {
+    background: linear-gradient(135deg, #e91e63 0%, #f44336 100%);
+    transform: translateY(-1px);
 }
 
-td {
-    padding: 10px;
-    border: 1px solid #ddd;
-    text-align: center;
-}
-
-/* Кнопки */
-button {
-    padding: 8px 16px;
-    margin-top: 10px;
-    background-color: #feed01;
-    border: none;
-    border-radius: 6px;
+/* Строки инвентарной таблицы */
+.inventory-table tbody tr {
+    transition: all 0.2s ease;
+    border-bottom: 1px solid #e9ecef;
     cursor: pointer;
 }
 
+.inventory-table tbody tr:nth-child(even) {
+    background: #f8f9fa;
+}
+
+.inventory-table tbody tr:hover {
+    background: linear-gradient(135deg, #fce4ec 0%, #f3e5f5 100%);
+    transform: scale(1.01);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.inventory-table td {
+    padding: 14px 16px;
+    border: none;
+    vertical-align: middle;
+    font-size: 14px;
+    text-align: center;
+}
+
+/* Контейнер для всей страницы */
+.page-container {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Контейнер для таблицы */
+.table-container {
+    width: 100%;
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Контейнер с прокруткой */
+.table-scroll-container {
+    height: calc(100vh - 170px);
+    overflow-y: auto;
+    overflow-x: auto;
+    padding: 0 20px 20px;
+    box-sizing: border-box;
+}
+
+/* Заголовок таблицы */
+.table-header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+    padding: 20px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.15);
+    transition: all 0.3s ease;
+}
+
+.table-header {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    gap: 15px;
+}
+
+/* Кнопка добавления */
+.add-button {
+    margin-right: 10px;
+    padding: 12px 24px;
+    background: rgba(255,255,255,0.2);
+    color: white;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-radius: 25px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.add-button:hover {
+    background: rgba(255,255,255,0.3);
+    border-color: rgba(255,255,255,0.5);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+h2 {
+    font-size: 28px;
+    margin: 0;
+    font-family: 'Montserrat', sans-serif;
+    color: white;
+    font-weight: 700;
+    flex-grow: 1;
+    text-align: center;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.logo {
+    width: 100px;
+}
+
+/* Кнопки действий в таблице */
+button {
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
 button:hover {
-    background-color: #e9ecef;
+    background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+/* Специальные кнопки для действий с записями */
+.save-button {
+    background-color: #28a745 !important;
+    background: #28a745 !important;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-right: 5px;
+    font-size: 12px;
+}
+
+.save-button:hover {
+    background-color: #218838 !important;
+    background: #218838 !important;
+    transform: translateY(-1px);
+}
+
+.delete-button {
+    background-color: #dc3545 !important;
+    background: #dc3545 !important;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-right: 5px;
+    font-size: 12px;
+}
+
+.delete-button:hover {
+    background-color: #c82333 !important;
+    background: #c82333 !important;
+    transform: translateY(-1px);
+}
+
+.cancel-button {
+    background-color: #6c757d !important;
+    background: #6c757d !important;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.cancel-button:hover {
+    background-color: #545b62 !important;
+    background: #545b62 !important;
+    transform: translateY(-1px);
 }
 
 

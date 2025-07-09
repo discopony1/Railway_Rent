@@ -13,6 +13,7 @@ const DateTimePicker = ({ label, value, onChange }) => {
         <input
           type="time"
           value={value.time}
+          step="900"
           onChange={(e) => onChange({ ...value, time: e.target.value })}
         />
       </div>

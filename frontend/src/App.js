@@ -4,6 +4,7 @@ import Table from "./components/Table";
 import DebugToggle from "./components/DebugToggle";
 import { BrowserRouter as Router, Route, Routes, useLocation } from "react-router-dom";
 import Inventory from "./components/Inventory";
+import NotificationSystem from "./components/NotificationSystem";
 import "./components/styles.css";
 
 const App = () => {
@@ -29,6 +30,7 @@ const App = () => {
                     <Route path="/inventory" element={<Inventory />} />
                 </Routes>
             </div>
+            <NotificationSystem />
         </Router>
     );
 };

@@ -2,17 +2,31 @@ import React, { useState, useEffect } from "react";
 import RentalRow from "./RentalRow";
 import LoadingSpinner from "./LoadingSpinner";
 import API_BASE_URL from "../config";
+import { showSuccess, showError } from "./NotificationSystem";
 import logo from '../logo.png'
 import './Table.css';
 
 const Table = () => {
     const [bookings, setBookings] = useState([]);
     const [error, setError] = useState(null);
-    const [isEditingRow, setIsEditingRow] = useState(null); // Состояние для редактирования строки
+    const [selectedRows, setSelectedRows] = useState(new Set());
+
 
     useEffect(() => {
         fetchBookings();
     }, []);
+
+    // Обработка нажатия клавиши Delete
+    useEffect(() => {
+        const handleKeyDown = (event) => {
+            if (event.key === 'Delete' && selectedRows.size > 0) {
+                handleDeleteSelected();
+            }
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [selectedRows]);
 
     const formatDateForAPI = (dateString) => {
         if (!dateString) return null;
@@ -29,7 +43,7 @@ const Table = () => {
             setBookings(sortBookings(data || []));
         } catch (err) {
             console.error("Ошибка загрузки бронирований:", err);
-            setError(err.message);
+            showError("Не удалось загрузить данные аренды");
         }
     };
 
@@ -73,13 +87,14 @@ const Table = () => {
             
             if (savedRental && typeof savedRental === 'object') {
                 setBookings(prevBookings => sortBookings([savedRental, ...prevBookings])); // ✅ Добавляем вверх + сортируем
+                showSuccess("Аренда создана");
             } else {
                 console.error("❌ API вернул некорректные данные:", savedRental);
-                setError("Не удалось создать бронирование - некорректный ответ сервера");
+                showError("Не удалось создать бронирование - некорректный ответ сервера");
             }
         } catch (error) {
             console.error("Ошибка создания аренды:", error);
-            setError(error.message || "Не удалось создать бронирование");
+            showError(error.message || "Не удалось создать бронирование");
         }
     };
 
@@ -109,8 +124,55 @@ const Table = () => {
             }
 
             console.log("✅ Успешно обновлено!");
+            showSuccess("Аренда обновлена");
         } catch (error) {
             console.error("Ошибка обновления:", error);
+            showError("Не удалось обновить аренду");
+        }
+    };
+
+    // Обработка выделения строк
+    const handleRowSelect = (id, isSelected) => {
+        setSelectedRows(prev => {
+            const newSet = new Set(prev);
+            if (isSelected) {
+                newSet.add(id);
+            } else {
+                newSet.delete(id);
+            }
+            return newSet;
+        });
+    };
+
+    // Выделить все/снять выделение со всех
+    const handleSelectAll = (isSelected) => {
+        if (isSelected) {
+            setSelectedRows(new Set(bookings.map(booking => booking.id)));
+        } else {
+            setSelectedRows(new Set());
+        }
+    };
+
+    // Удаление выбранных строк
+    const handleDeleteSelected = async () => {
+        if (selectedRows.size === 0) return;
+        
+        const confirmed = window.confirm(`Удалить ${selectedRows.size} выбранных аренд?`);
+        if (!confirmed) return;
+
+        try {
+            const deletePromises = Array.from(selectedRows).map(id =>
+                fetch(`${API_BASE_URL}/bookings/${id}`, { method: "DELETE" })
+            );
+            
+            await Promise.all(deletePromises);
+            
+            setBookings(prevBookings => sortBookings(prevBookings.filter(booking => !selectedRows.has(booking.id))));
+            setSelectedRows(new Set());
+            showSuccess(`Успешно удалено ${selectedRows.size} аренд`);
+        } catch (error) {
+            console.error("Ошибка массового удаления:", error);
+            showError("Не удалось удалить выбранные аренды");
         }
     };
 
@@ -124,9 +186,15 @@ const Table = () => {
             }
 
             setBookings(prevBookings => sortBookings(prevBookings.filter(booking => booking.id !== id)));
+            setSelectedRows(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(id);
+                return newSet;
+            });
+            showSuccess("Аренда удалена");
         } catch (error) {
             console.error("Ошибка удаления:", error);
-            setError(error.message || "Не удалось удалить бронирование");
+            showError(error.message || "Не удалось удалить бронирование");
         }
     };
 
@@ -143,7 +211,14 @@ const Table = () => {
         <div className="page-container">
             <div className="rental-table-header-container">
                 <div className="rental-table-header">
-                    <button onClick={addRental} className="add-button">➕ Добавить аренду</button>
+                    <div className="header-left">
+                        <button onClick={addRental} className="add-button">➕ Добавить аренду</button>
+                        {selectedRows.size > 0 && (
+                            <button onClick={handleDeleteSelected} className="delete-selected-button">
+                                🗑️ Удалить выбранные ({selectedRows.size})
+                            </button>
+                        )}
+                    </div>
                     <h2>📋 Таблица аренды</h2>
                     <img src={logo} alt="Logo" className="logo" /> 
                 </div>
@@ -155,6 +230,14 @@ const Table = () => {
                     <table className="rental-table">
                         <thead>
                             <tr>
+                                <th style={{ width: '30px' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedRows.size === bookings.length && bookings.length > 0}
+                                        onChange={(e) => handleSelectAll(e.target.checked)}
+                                        style={{ transform: 'scale(1.2)' }}
+                                    />
+                                </th>
                                 <th>Дата аренды</th>
                                 <th>Имя</th>
                                 <th>Кто выдал</th>
@@ -174,9 +257,8 @@ const Table = () => {
                                     booking={booking}
                                     onUpdate={updateRental}
                                     onDelete={() => handleDelete(booking.id)}
-                                    isEditingRow={isEditingRow}
-                                    setIsEditingRow={setIsEditingRow}
-                                    onClickEdit={() => handleClickEdit(booking.id)}
+                                    isSelected={selectedRows.has(booking.id)}
+                                    onSelect={(isSelected) => handleRowSelect(booking.id, isSelected)}
                                 />
                             ))}
                         </tbody>

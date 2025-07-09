@@ -73,24 +73,29 @@ const EquipmentDropdown = ({
         }
     }, [isOpen]);
 
-    // Обработка кликов вне выпадающего списка
+    // Блокировка скролла и обработка кликов вне выпадающего списка
     useEffect(() => {
-        const handleClickOutside = (event) => {
-            const clickedInsideDropdown = dropdownRef.current && dropdownRef.current.contains(event.target);
-            const clickedOnTrigger = triggerRef && triggerRef.current && triggerRef.current.contains(event.target);
-            
-            if (!clickedInsideDropdown && !clickedOnTrigger) {
-                onClose();
-            }
-        };
-
         if (isOpen) {
+            // Простая блокировка скролла
+            document.body.classList.add('equipment-dropdown-open');
+            
+            const handleClickOutside = (event) => {
+                const clickedInsideDropdown = dropdownRef.current && dropdownRef.current.contains(event.target);
+                const clickedOnTrigger = triggerRef && triggerRef.current && triggerRef.current.contains(event.target);
+                
+                if (!clickedInsideDropdown && !clickedOnTrigger) {
+                    onClose();
+                }
+            };
+
             // Используем setTimeout чтобы избежать немедленного закрытия
             const timeoutId = setTimeout(() => {
                 document.addEventListener("mousedown", handleClickOutside);
-            }, 10);
+            }, 100);
 
             return () => {
+                // Восстанавливаем состояние
+                document.body.classList.remove('equipment-dropdown-open');
                 clearTimeout(timeoutId);
                 document.removeEventListener("mousedown", handleClickOutside);
             };
@@ -99,7 +104,18 @@ const EquipmentDropdown = ({
 
     const handleEquipmentSelect = (item, event) => {
         const availableQuantity = getAvailableQuantity(item);
-        if (availableQuantity > 0) {
+        
+        // Считаем общее количество уже выбранного оборудования с таким ID
+        const totalSelected = selectedEquipment
+            .filter(eq => eq.id === item.id)
+            .reduce((sum, eq) => sum + (eq.quantity || 0), 0);
+            
+        // Проверяем, можем ли мы добавить еще одну единицу
+        const totalAvailable = item.total || 0;
+        const occupied = item.occupied || 0;
+        const reallyAvailable = totalAvailable - occupied;
+        
+        if (totalSelected < reallyAvailable) {
             // Если зажат Ctrl/Cmd, добавляем дубликат, иначе увеличиваем количество
             const addDuplicate = event?.ctrlKey || event?.metaKey;
             
@@ -109,7 +125,7 @@ const EquipmentDropdown = ({
                 // Увеличиваем количество первого найденного элемента
                 const updatedEquipment = selectedEquipment.map(eq => {
                     if (eq.id === item.id && eq === existingItems[0]) {
-                        const newQuantity = Math.min((eq.quantity || 1) + 1, availableQuantity + (eq.quantity || 1));
+                        const newQuantity = (eq.quantity || 1) + 1;
                         return { ...eq, quantity: newQuantity };
                     }
                     return eq;
@@ -146,17 +162,40 @@ const EquipmentDropdown = ({
 
     if (!isOpen) return null;
 
+    // Расчет адаптивной позиции и высоты
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
+    const dropdownMaxHeight = Math.min(500, viewportHeight - 40); // 500px или высота экрана минус отступы
+    const spaceBelow = viewportHeight - (position?.top || 0);
+    const spaceAbove = (position?.top || 0);
+    
+    // Решаем, показывать ли dropdown вверх или вниз
+    const showAbove = spaceBelow < dropdownMaxHeight && spaceAbove > spaceBelow;
+    const finalTop = showAbove 
+        ? Math.max(20, (position?.top || 0) - dropdownMaxHeight - 10)
+        : (position?.top || 0);
+        
+    // Проверяем, чтобы dropdown не выходил за края экрана
+    const finalLeft = Math.min((position?.left || 0), viewportWidth - 370); // 370 = ширина dropdown + отступ
+
     return (
-        <div 
-            className="equipment-dropdown"
-            ref={dropdownRef}
-            style={{
-                position: 'absolute',
-                top: position?.top || 0,
-                left: position?.left || 0,
-                zIndex: 1000
-            }}
-        >
+        <div>
+            <div 
+                className="equipment-dropdown-overlay"
+                onClick={onClose}
+            />
+            
+            <div 
+                className="equipment-dropdown"
+                ref={dropdownRef}
+                style={{
+                    position: 'fixed',
+                    top: `${finalTop}px`,
+                    left: `${finalLeft}px`,
+                    zIndex: 100000,
+                    maxHeight: `${dropdownMaxHeight}px`
+                }}
+            >
             <div className="equipment-dropdown-header">
                 <input
                     ref={searchInputRef}
@@ -223,6 +262,7 @@ const EquipmentDropdown = ({
                         )}
                     </div>
                 )}
+            </div>
             </div>
         </div>
     );

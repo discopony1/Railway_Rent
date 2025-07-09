@@ -296,3 +296,50 @@ class Inventory:
             item['current_usage'] = current_usage
             
         return inventory
+    
+    @staticmethod
+    def reindex_items(items):
+        """Переназначает ID всех записей согласно новому порядку."""
+        try:
+            # Получаем все данные в правильном порядке
+            ordered_data = []
+            for item in items:
+                query = """
+                    SELECT name, category, subcategory, model, serial_number, notes, status, total, belongs_to
+                    FROM inventory WHERE id = %s
+                """
+                result = execute_query(query, (item['old_id'],), fetch=True)
+                if result:
+                    ordered_data.append(result[0])
+            
+            # Удаляем все записи из таблицы
+            execute_query("DELETE FROM inventory", fetch=False)
+            
+            # Сбрасываем последовательность
+            execute_query("ALTER SEQUENCE inventory_id_seq RESTART WITH 1", fetch=False)
+            
+            # Вставляем данные в новом порядке
+            for data in ordered_data:
+                query = """
+                    INSERT INTO inventory (name, category, subcategory, model, serial_number, notes, status, total, belongs_to)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """
+                params = (
+                    data['name'], 
+                    data['category'], 
+                    data['subcategory'], 
+                    data['model'], 
+                    data['serial_number'], 
+                    data['notes'], 
+                    data['status'], 
+                    data['total'], 
+                    data['belongs_to']
+                )
+                execute_query(query, params, fetch=False)
+            
+            logger.info(f"Successfully reindexed {len(items)} inventory items")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error during reindexing: {str(e)}")
+            raise

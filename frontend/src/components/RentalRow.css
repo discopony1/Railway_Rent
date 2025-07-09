@@ -11,6 +11,8 @@ td {
 /* Поля ввода при редактировании */
 td input[type="text"], 
 td input[type="datetime-local"], 
+td input[type="date"],
+td input[type="time"],
 td textarea {
     width: 100%;
     min-width: 120px;
@@ -26,6 +28,8 @@ td textarea {
 
 td input[type="text"]:focus, 
 td input[type="datetime-local"]:focus, 
+td input[type="date"]:focus,
+td input[type="time"]:focus,
 td textarea:focus {
     outline: none;
     border-color: #667eea;
@@ -358,4 +362,58 @@ td textarea {
 .no-conflict {
     color: #28a745;
     font-size: 16px;
+}
+
+/* Контейнер для дат с временем */
+.date-inputs-container {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    align-items: center;
+}
+
+.date-input-group {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    justify-content: center;
+}
+
+.date-input-group label {
+    font-size: 11px;
+    font-weight: bold;
+    color: #666;
+    min-width: 20px;
+}
+
+.date-separator {
+    font-size: 12px;
+    color: #999;
+    margin: 2px 0;
+}
+
+.date-input-group input[type="date"],
+.date-input-group input[type="time"] {
+    min-width: unset;
+    padding: 4px 6px;
+    font-size: 11px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.date-input-group input[type="date"]:focus,
+.date-input-group input[type="time"]:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+/* Выделенная строка */
+.selected-row {
+    background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%) !important;
+    border: 2px solid #667eea !important;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2) !important;
+}
+
+.selected-row:hover {
+    background: linear-gradient(135deg, #bbdefb 0%, #e1bee7 100%) !important;
 }

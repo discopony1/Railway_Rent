@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import EquipmentDropdown from "./EquipmentDropdown";
+import EquipmentModal from "./EquipmentModal";
 import StatusSelect from "./StatusSelect";
 import API_BASE_URL from "../config";
 import { getCategoryColor } from "../utils/categoryColors";
@@ -48,7 +48,7 @@ const checkConflicts = (start_date, end_date, status) => {
     return newConflicts;
 };
 
-const RentalRow = ({ booking, onUpdate, onDelete, allRentals = [], inventory = [], isEditingRow, setIsEditingRow }) => {
+const RentalRow = ({ booking, onUpdate, onDelete, allRentals = [], inventory = [], isSelected, onSelect }) => {
     const [rental, setRental] = useState({
         ...booking,
         equipment: typeof booking.equipment === "string"
@@ -57,17 +57,12 @@ const RentalRow = ({ booking, onUpdate, onDelete, allRentals = [], inventory = [
                 ? booking.equipment
                 : []
     });
-    const [showEquipmentDropdown, setShowEquipmentDropdown] = useState(false);
-    const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
+    const [showEquipmentModal, setShowEquipmentModal] = useState(false);
     const [conflicts, setConflicts] = useState([]);
     const [hoveredConflict, setHoveredConflict] = useState(false);
     const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
-    const [editingField, setEditingField] = useState(null); // Для отслеживания редактируемого поля
-    const [initialValues, setInitialValues] = useState({}); // Для хранения начальных значений полей
     const [equipmentWithCategories, setEquipmentWithCategories] = useState({}); // Для хранения категорий оборудования
     const [categoriesLoaded, setCategoriesLoaded] = useState(false); // Флаг загрузки категорий
-    const rowRef = useRef(null); // Ссылка на строку для отслеживания кликов вне
-    const equipmentButtonRef = useRef(null); // Ссылка на кнопку выбора оборудования
 
     // Функция для проверки и обновления конфликтов
     const updateConflictsAndAvailability = useCallback(() => {
@@ -103,60 +98,28 @@ const RentalRow = ({ booking, onUpdate, onDelete, allRentals = [], inventory = [
         fetchEquipmentCategories();
     }, []);
 
-    // Обработка кликов вне строки для выключения редактирования
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (rowRef.current && !rowRef.current.contains(event.target) && isEditingRow === rental.id) {
-                // Проверяем, что клик не по выпадающему списку оборудования
-                const isDropdownClick = event.target.closest('.equipment-dropdown');
-                                   
-                if (!isDropdownClick) {
-                    // Если клик вне строки и не по выпадающему списку, выключаем редактирование
-                    setIsEditingRow(null);
-                }
-            }
-        };
 
-        // Добавляем обработчик только если строка в режиме редактирования
-        if (isEditingRow === rental.id) {
-            document.addEventListener('mousedown', handleClickOutside);
-        }
 
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, [isEditingRow, rental.id, setIsEditingRow]);
-
-    // Сохранение начальных значений при начале редактирования
-    const handleClickEdit = () => {
-        setIsEditingRow(rental.id); // Устанавливаем текущую строку как редактируемую
-        setInitialValues({
-            ...rental,  // Сохраняем начальные значения
-        });
-    };
-
-    // Обработчик изменения данных в таблице
+    // Обработчик изменения данных в таблице (только локальное обновление)
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setRental(prev => ({ ...prev, [name]: value }));
+        const updatedRental = { ...rental, [name]: value };
+        setRental(updatedRental);
     };
 
-    const handleBlur = () => {
-        // Сравниваем старые и новые значения
-        const changedFields = Object.keys(rental).filter(key => rental[key] !== initialValues[key]);
-
-        // Если есть изменения, отправляем на сервер
-        if (changedFields.length > 0) {
-            const { id, ...rentalData } = rental;
-            onUpdate(rental.id, {
-                ...rentalData,
-                start_date: rental.start_date || null,
-                end_date: rental.end_date || null,
-                equipment: rental.equipment ?? []
-            });
-        }
-
-        setEditingField(null); // Снимаем редактируемое поле
+    // Обработчик отправки данных на сервер при потере фокуса
+    const handleBlur = (e) => {
+        const { name, value } = e.target;
+        const updatedRental = { ...rental, [name]: value };
+        
+        // Отправляем изменения на сервер только при потере фокуса
+        const { id, ...rentalData } = updatedRental;
+        onUpdate(rental.id, {
+            ...rentalData,
+            start_date: updatedRental.start_date || null,
+            end_date: updatedRental.end_date || null,
+            equipment: updatedRental.equipment ?? []
+        });
     };
 
     const handleStatusChange = (status) => {
@@ -176,18 +139,7 @@ const RentalRow = ({ booking, onUpdate, onDelete, allRentals = [], inventory = [
     const handleEquipmentButtonClick = (e) => {
         e.preventDefault();
         e.stopPropagation();
-        
-        if (!showEquipmentDropdown) {
-            const rect = e.target.getBoundingClientRect();
-            const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
-            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-            
-            setDropdownPosition({
-                top: rect.bottom + scrollTop + 5,
-                left: rect.left + scrollLeft
-            });
-            setShowEquipmentDropdown(true);
-        }
+        setShowEquipmentModal(true);
     };
 
     const handleRemoveEquipment = (equipmentIndex) => {
@@ -207,21 +159,19 @@ const RentalRow = ({ booking, onUpdate, onDelete, allRentals = [], inventory = [
         return `${day}.${month} ${hours}:${minutes}`;
     };
 
-    // Функция для корректного форматирования даты для input datetime-local
-    const formatDateForInput = (dateString) => {
+    // Функция для корректного форматирования даты для input type="date"
+    const formatDateForDateInput = (dateString) => {
         if (!dateString) return "";
         
-        // Создаем дату из строки и корректируем часовой пояс
+        // Создаем дату из строки
         const date = new Date(dateString);
         
         // Получаем компоненты даты в местном времени
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, "0");
         const day = String(date.getDate()).padStart(2, "0");
-        const hours = String(date.getHours()).padStart(2, "0");
-        const minutes = String(date.getMinutes()).padStart(2, "0");
         
-        return `${year}-${month}-${day}T${hours}:${minutes}`;
+        return `${year}-${month}-${day}`;
     };
 
     // Функция для округления времени до ближайших 15 минут
@@ -234,102 +184,153 @@ const RentalRow = ({ booking, onUpdate, onDelete, allRentals = [], inventory = [
         return date.toISOString().slice(0, 16);
     };
 
+    // Функция для извлечения времени из даты для input type="time"
+    const formatTimeForInput = (dateString) => {
+        if (!dateString) return "09:00"; // По умолчанию 9:00
+        
+        const date = new Date(dateString);
+        const hours = String(date.getHours()).padStart(2, "0");
+        const minutes = String(date.getMinutes()).padStart(2, "0");
+        return `${hours}:${minutes}`;
+    };
+
+    // Обработчик изменения времени
+    const handleTimeChange = (e) => {
+        const { name, value } = e.target;
+        const isStartTime = name === "start_time";
+        const dateName = isStartTime ? "start_date" : "end_date";
+        const currentDate = rental[dateName];
+        
+        if (currentDate) {
+            const date = new Date(currentDate);
+            const [hours, minutes] = value.split(":");
+            date.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+            
+            const updatedRental = { ...rental, [dateName]: date.toISOString() };
+            setRental(updatedRental);
+        }
+    };
+
+    // Обработчик потери фокуса для времени
+    const handleTimeBlur = (e) => {
+        const { name, value } = e.target;
+        const isStartTime = name === "start_time";
+        const dateName = isStartTime ? "start_date" : "end_date";
+        const currentDate = rental[dateName];
+        
+        if (currentDate) {
+            const date = new Date(currentDate);
+            const [hours, minutes] = value.split(":");
+            date.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+            
+            const updatedRental = { ...rental, [dateName]: date.toISOString() };
+            setRental(updatedRental);
+            
+            // Отправляем изменения на сервер
+            const { id, ...rentalData } = updatedRental;
+            onUpdate(rental.id, {
+                ...rentalData,
+                start_date: updatedRental.start_date || null,
+                end_date: updatedRental.end_date || null,
+                equipment: updatedRental.equipment ?? []
+            });
+        }
+    };
+
     return (
         <>
-        <tr ref={rowRef} onClick={handleClickEdit}>
+        <tr className={isSelected ? 'selected-row' : ''}>
+            {/* Чекбокс для выделения */}
+            <td style={{ textAlign: "center", width: "30px" }}>
+                <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={(e) => onSelect(e.target.checked)}
+                    style={{ transform: 'scale(1.2)' }}
+                />
+            </td>
+
             {/* Дата аренды */}
             <td style={{ textAlign: "center" }}>
-                {isEditingRow === rental.id ? (
-                    <>
-                        С <input
-                            type="datetime-local"
+                <div className="date-inputs-container">
+                    <div className="date-input-group">
+                        <label>С:</label>
+                        <input
+                            type="date"
                             name="start_date"
-                            value={formatDateForInput(rental.start_date)}
-                            onChange={(e) => {
-                                const roundedValue = roundToNearestQuarter(e.target.value);
-                                handleChange({
-                                    target: {
-                                        name: e.target.name,
-                                        value: roundedValue
-                                    }
-                                });
-                            }}
+                            value={formatDateForDateInput(rental.start_date)}
+                            onChange={handleChange}
                             onBlur={handleBlur}
-                            step="900"
+                            style={{ width: "85px", fontSize: "12px" }}
                         />
-                        <div>---</div>
-                        По <input
-                            type="datetime-local"
+                        <input
+                            type="time"
+                            name="start_time"
+                            value={formatTimeForInput(rental.start_date)}
+                            step="900"
+                            onChange={handleTimeChange}
+                            onBlur={handleTimeBlur}
+                            style={{ width: "60px", fontSize: "12px" }}
+                        />
+                    </div>
+                    <div className="date-separator">↓</div>
+                    <div className="date-input-group">
+                        <label>По:</label>
+                        <input
+                            type="date"
                             name="end_date"
-                            value={formatDateForInput(rental.end_date)}
-                            onChange={(e) => {
-                                const roundedValue = roundToNearestQuarter(e.target.value);
-                                handleChange({
-                                    target: {
-                                        name: e.target.name,
-                                        value: roundedValue
-                                    }
-                                });
-                            }}
+                            value={formatDateForDateInput(rental.end_date)}
+                            onChange={handleChange}
                             onBlur={handleBlur}
-                            step="900"
+                            style={{ width: "85px", fontSize: "12px" }}
                         />
-                    </>
-                ) : (
-                    <>
-                        С <span>{rental.start_date && formatDate(rental.start_date)}</span>
-                        <div>---</div>
-                        По <span>{rental.end_date && formatDate(rental.end_date)}</span>
-                    </>
-                )}
+                        <input
+                            type="time"
+                            name="end_time"
+                            value={formatTimeForInput(rental.end_date)}
+                            step="900"
+                            onChange={handleTimeChange}
+                            onBlur={handleTimeBlur}
+                            style={{ width: "60px", fontSize: "12px" }}
+                        />
+                    </div>
+                </div>
             </td>
 
             {/* Имя арендатора */}
             <td style={{ textAlign: "center" }}>
-                {isEditingRow === rental.id ? (
-                    <input
-                        type="text"
-                        name="renter"
-                        value={rental.renter || ""}
-                        onChange={handleChange}
-                        onBlur={handleBlur}
-                        placeholder="Имя арендатора"
-                    />
-                ) : (
-                    <span>{rental.renter}</span>
-                )}
+                <input
+                    type="text"
+                    name="renter"
+                    value={rental.renter || ""}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    placeholder="Имя арендатора"
+                />
             </td>
 
             {/* Кто выдал */}
             <td style={{ textAlign: "center" }}>
-                {isEditingRow === rental.id ? (
-                    <input
-                        type="text"
-                        name="issuer"
-                        value={rental.issuer || ""}
-                        onChange={handleChange}
-                        onBlur={handleBlur}
-                        placeholder="Кто выдаст"
-                    />
-                ) : (
-                    <span>{rental.issuer}</span>
-                )}
+                <input
+                    type="text"
+                    name="issuer"
+                    value={rental.issuer || ""}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    placeholder="Кто выдаст"
+                />
             </td>
 
             {/* Кто принял */}
             <td style={{ textAlign: "center" }}>
-                {isEditingRow === rental.id ? (
-                    <input
-                        type="text"
-                        name="receiver"
-                        value={rental.receiver || ""}
-                        onChange={handleChange}
-                        onBlur={handleBlur}
-                        placeholder="Кто принял"
-                    />
-                ) : (
-                    <span>{rental.receiver}</span>
-                )}
+                <input
+                    type="text"
+                    name="receiver"
+                    value={rental.receiver || ""}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    placeholder="Кто принял"
+                />
             </td>
 
             {/* Оборудование */}
@@ -362,7 +363,6 @@ const RentalRow = ({ booking, onUpdate, onDelete, allRentals = [], inventory = [
                         );
                     })}
                     <button 
-                        ref={equipmentButtonRef}
                         type="button"
                         onClick={handleEquipmentButtonClick} 
                         className="equipment-button"
@@ -371,37 +371,34 @@ const RentalRow = ({ booking, onUpdate, onDelete, allRentals = [], inventory = [
                     </button>
                 </div>
 
-                <EquipmentDropdown
-                    isOpen={showEquipmentDropdown}
-                    onClose={() => setShowEquipmentDropdown(false)}
-                    onSelect={handleEquipmentChange}
+                <EquipmentModal
+                    isOpen={showEquipmentModal}
+                    onClose={() => setShowEquipmentModal(false)}
+                    booking={rental}
+                    onUpdate={onUpdate}
                     selectedEquipment={rental.equipment}
-                    startDate={rental.start_date}
-                    endDate={rental.end_date}
-                    bookingId={rental.id}
-                    position={dropdownPosition}
-                    triggerRef={equipmentButtonRef}
+                    onEquipmentChange={handleEquipmentChange}
+                    onDelete={(id) => {
+                        setShowEquipmentModal(false);
+                        onDelete(id);
+                    }}
                 />
             </td>
 
             {/* Примечания */}
             <td style={{ textAlign: "center" }}>
-                {isEditingRow === rental.id ? (
-                    <textarea
-                        name="notes"
-                        value={rental.notes || ""}
-                        onChange={handleChange}
-                        onBlur={handleBlur}
-                        placeholder="Примечания..."
-                        rows="1"
-                        onInput={(e) => {
-                            e.target.style.height = 'auto';
-                            e.target.style.height = e.target.scrollHeight + 'px';
-                        }}
-                    />
-                ) : (
-                    <span>{rental.notes}</span>
-                )}
+                <textarea
+                    name="notes"
+                    value={rental.notes || ""}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    placeholder="Примечания..."
+                    rows="1"
+                    onInput={(e) => {
+                        e.target.style.height = 'auto';
+                        e.target.style.height = e.target.scrollHeight + 'px';
+                    }}
+                />
             </td>
 
             {/* Где */}

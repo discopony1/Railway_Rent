@@ -121,3 +121,34 @@ def get_available_equipment():
     except Exception as e:
         logger.error(f"Ошибка при получении доступного оборудования: {str(e)}")
         return jsonify({"error": "Не удалось получить доступное оборудование"}), 500
+
+# 🔹 Переназначение ID всех записей согласно новому порядку
+@bp.route("/reindex", methods=["POST"])
+@handle_db_error
+def reindex_inventory():
+    logger.info("Reindex inventory endpoint called")
+    data = request.json
+    logger.info(f"Received data: {data}")
+    
+    items = data.get('items', [])
+    logger.info(f"Items to reindex: {len(items)}")
+    
+    if not items:
+        logger.error("No items provided for reindexing")
+        return jsonify({"error": "Не указан список элементов для переназначения"}), 400
+    
+    try:
+        logger.info("Starting reindex operation")
+        success = Inventory.reindex_items(items)
+        if success:
+            logger.info(f"Successfully reindexed {len(items)} inventory items")
+            return jsonify({"success": True, "message": f"Переназначено ID для {len(items)} записей"}), 200
+        else:
+            logger.error("Reindex operation returned False")
+            return jsonify({"error": "Не удалось переназначить ID"}), 500
+    except Exception as e:
+        logger.error(f"Exception during reindexing: {str(e)}")
+        logger.error(f"Exception type: {type(e)}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        return jsonify({"error": "Ошибка при переназначении ID", "details": str(e)}), 500

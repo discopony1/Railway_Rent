@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import LoadingSpinner from './LoadingSpinner';
+import { showSuccess, showError } from './NotificationSystem';
+import API_BASE_URL from '../config';
 import './Inventory.css';
 import logo from '../inventory_logo.png'
 
@@ -12,20 +14,35 @@ const InventoryTable = () => {
     const [updatedData, setUpdatedData] = useState({});
     const [notification, setNotification] = useState(null);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [isReindexing, setIsReindexing] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
     const tableRef = useRef(null);
 
     // Загрузка данных с сервера
     useEffect(() => {
         const fetchInventory = async () => {
             try {
-                const response = await fetch("http://localhost:5000/api/inventory");
+                const response = await fetch(`${API_BASE_URL}/inventory`);
                 if (!response.ok) {
                     throw new Error(`Ошибка загрузки: ${response.status}`);
                 }
                 const data = await response.json();
-                setInventory(data);
+                
+                // Автоматическая сортировка по категориям, затем по названию
+                const sortedData = [...data].sort((a, b) => {
+                    // Сначала по категориям
+                    if (a.category < b.category) return -1;
+                    if (a.category > b.category) return 1;
+                    // Затем по названию
+                    if (a.name < b.name) return -1;
+                    if (a.name > b.name) return 1;
+                    return 0;
+                });
+                
+                setInventory(sortedData);
             } catch (error) {
                 console.error('Ошибка загрузки инвентаря:', error);
+                showError("Не удалось загрузить данные инвентаря");
             } finally {
                 setLoading(false);
             }
@@ -74,7 +91,7 @@ const InventoryTable = () => {
     // Удаление оборудования
     const deleteEquipment = async (itemId) => {
         try {
-            const response = await fetch(`http://localhost:5000/api/inventory/${itemId}`, {
+            const response = await fetch(`${API_BASE_URL}/inventory/${itemId}`, {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -89,15 +106,11 @@ const InventoryTable = () => {
                 // Удаляем элемент из состояния
                 setInventory(prevInventory => prevInventory.filter(item => item.id !== itemId));
                 setEditingItem(null); // Выходим из режима редактирования
-                setNotification({ message: "Оборудование удалено", type: "success" });
-                
-                // Убираем уведомление через 3 секунды
-                setTimeout(() => setNotification(null), 3000);
+                showSuccess(`Запись ${itemId} удалена`);
             }
         } catch (error) {
             console.error("Ошибка удаления оборудования:", error);
-            setNotification({ message: "Ошибка при удалении оборудования", type: "error" });
-            setTimeout(() => setNotification(null), 3000);
+            showError("Ошибка при удалении оборудования");
         }
     };
 
@@ -116,7 +129,7 @@ const InventoryTable = () => {
                 belongs_to: "МШ"
             };
 
-            const response = await fetch("http://localhost:5000/api/inventory/create", {
+            const response = await fetch(`${API_BASE_URL}/inventory/create`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newItem)
@@ -133,15 +146,11 @@ const InventoryTable = () => {
                 const newEquipment = { ...newItem, id: result.id };
                 setInventory(prevInventory => [newEquipment, ...prevInventory]);
                 setEditingItem(result.id); // Сразу переводим в режим редактирования
-                setNotification({ message: "Новое оборудование добавлено", type: "success" });
-                
-                // Убираем уведомление через 3 секунды
-                setTimeout(() => setNotification(null), 3000);
+                showSuccess(`Запись ${result.id} создана`);
             }
         } catch (error) {
             console.error("Ошибка создания оборудования:", error);
-            setNotification({ message: "Ошибка при создании оборудования", type: "error" });
-            setTimeout(() => setNotification(null), 3000);
+            showError("Ошибка при создании оборудования");
         }
     };
 
@@ -181,7 +190,7 @@ const InventoryTable = () => {
         }
 
         try {
-            const response = await fetch(`http://localhost:5000/api/inventory/${id}`, {
+            const response = await fetch(`${API_BASE_URL}/inventory/${id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -190,13 +199,13 @@ const InventoryTable = () => {
             });
 
             if (response.ok) {
-                setNotification({ message: "Инвентарь обновлен", type: "success" });
+                showSuccess(`Запись ${id} обновлена`);
             } else {
-                setNotification({ message: "Ошибка при сохранении изменений", type: "error" });
+                showError("Ошибка при сохранении изменений");
             }
         } catch (error) {
             console.error('Ошибка при обновлении инвентаря:', error);
-            setNotification({ message: "Ошибка при сохранении изменений", type: "error" });
+            showError("Ошибка при сохранении изменений");
         } finally {
             setIsProcessing(false);
         }
@@ -205,6 +214,57 @@ const InventoryTable = () => {
     // Обработчик клика по строке для начала редактирования
     const handleClickEdit = (itemId) => {
         setEditingItem(itemId);
+    };
+
+    // Переназначение ID согласно текущему порядку отображения
+    const reindexInventory = async () => {
+        if (isReindexing) return;
+        
+        const confirmed = window.confirm(
+            'Вы уверены, что хотите переназначить ID всех записей согласно текущему порядку отображения? Это действие нельзя отменить.'
+        );
+        
+        if (!confirmed) return;
+
+        setIsReindexing(true);
+        
+        try {
+            // Создаем новый массив с переназначенными ID
+            const reindexedItems = inventory.map((item, index) => ({
+                ...item,
+                new_id: index + 1,
+                old_id: item.id
+            }));
+
+            const response = await fetch(`${API_BASE_URL}/inventory/reindex`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items: reindexedItems })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Ошибка ${response.status}`);
+            }
+
+            const result = await response.json();
+            
+            if (result.success) {
+                // Обновляем локальные данные с новыми ID
+                const updatedInventory = inventory.map((item, index) => ({
+                    ...item,
+                    id: index + 1
+                }));
+                
+                setInventory(updatedInventory);
+                setEditingItem(null); // Выходим из режима редактирования
+                showSuccess(`Переназначено ID для ${inventory.length} записей`);
+            }
+        } catch (error) {
+            console.error("Ошибка переназначения ID:", error);
+            showError("Ошибка при переназначении ID");
+        } finally {
+            setIsReindexing(false);
+        }
     };
 
     // Сортировка
@@ -245,6 +305,22 @@ const InventoryTable = () => {
 
         return currentSort.order === 'asc' ? '↑' : currentSort.order === 'desc' ? '↓' : '↕';
     };
+
+    // Фильтрация инвентаря по поисковому термину
+    const filteredInventory = inventory.filter(item => {
+        if (!searchTerm) return true;
+        const searchLower = searchTerm.toLowerCase();
+        return (
+            item.name?.toLowerCase().includes(searchLower) ||
+            item.category?.toLowerCase().includes(searchLower) ||
+            item.subcategory?.toLowerCase().includes(searchLower) ||
+            item.model?.toLowerCase().includes(searchLower) ||
+            item.serial_number?.toLowerCase().includes(searchLower) ||
+            item.notes?.toLowerCase().includes(searchLower) ||
+            item.status?.toLowerCase().includes(searchLower) ||
+            item.belongs_to?.toLowerCase().includes(searchLower)
+        );
+    });
 
     // Отображение строки инвентаря
     const renderRow = (item) => {
@@ -356,9 +432,42 @@ const InventoryTable = () => {
         <div className="page-container">
             <div className="table-header-container">
                 <div className="table-header">
-                    <button onClick={addEquipment} className="add-button">➕ Добавить оборудование</button>
+                    <div className="header-buttons">
+                        <button onClick={addEquipment} className="add-button">➕ Добавить оборудование</button>
+                        <button 
+                            onClick={reindexInventory} 
+                            className="reindex-button"
+                            disabled={isReindexing}
+                        >
+                            {isReindexing ? '🔄 Переназначение...' : '🔢 Переназначить ID'}
+                        </button>
+                    </div>
                     <h2>📋 Инвентарь</h2>
                     <img src={logo} alt="Logo" className="logo" /> 
+                </div>
+            </div>
+            
+            {/* Строка поиска */}
+            <div className="search-container">
+                <div className="search-wrapper">
+                    <input
+                        type="text"
+                        placeholder="🔍 Поиск по инвентарю..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="search-input"
+                    />
+                    {searchTerm && (
+                        <button 
+                            onClick={() => setSearchTerm("")}
+                            className="search-clear"
+                        >
+                            ✕
+                        </button>
+                    )}
+                    <div className="search-results-count">
+                        {searchTerm && `Найдено: ${filteredInventory.length} из ${inventory.length}`}
+                    </div>
                 </div>
             </div>
             
@@ -384,7 +493,7 @@ const InventoryTable = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {inventory.map(renderRow)}
+                                {filteredInventory.map(renderRow)}
                             </tbody>
                         </table>
                     )}
